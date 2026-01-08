@@ -1,2 +1,4 @@
 module dialogs
 SettingsDialog 1.0 SettingsDialog.qml
+DeleteDialog 1.0 DeleteDialog.qml
+TaskDialog 1.0 TaskDialog.qml

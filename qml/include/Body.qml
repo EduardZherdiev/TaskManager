@@ -4,6 +4,7 @@ import QtQuick.Layouts 1.11
 import StyleModule 1.0
 import components
 import core
+import dialogs
 
 Column {
     id: body
@@ -12,6 +13,22 @@ Column {
 
     property var columnWidths: [3, 2, 2, 2, 2]
     property real fixedButtonsWidth: 2*Style.smallSpacing + 72 + Style.mediumSpacing
+
+    DeleteDialog {
+        id: deleteDialog
+        onConfirmed: function(taskId) {
+            console.log("Confirmed deletion of task ID:", taskId)
+            // TODO: Call TaskModel method to delete task
+        }
+    }
+
+    TaskDialog {
+        id: taskDialog
+        onSaveRequested: function(taskId, title, description, state) {
+            console.log("Save requested", taskId, title, description, state)
+            // TODO: propagate to model/repository
+        }
+    }
 
     function columnWidth(index, totalWidth) {
         var sum = 0
@@ -101,7 +118,9 @@ Column {
                 source: ResourceManager.icon("view","png")
                 height: parent.height
                 width: height
-                onClicked: console.log("View clicked for row", index)
+                onClicked: {
+                    taskDialog.openForTask(id, title, description, taskState, createdAt, updatedAt, deletedAt)
+                }
             }
 
             Item { width: Style.smallSpacing; height: 1 }
@@ -111,7 +130,11 @@ Column {
                 height: parent.height
                 width: height
                 type: 2
-                onClicked: console.log("Delete clicked for row", index)
+                onClicked: {
+                    deleteDialog.taskId = id
+                    deleteDialog.taskTitle = title
+                    deleteDialog.open()
+                }
             }
 
             Item { width: Style.mediumSpacing; height: 1 }

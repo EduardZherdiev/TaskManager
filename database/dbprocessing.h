@@ -5,7 +5,7 @@
 #include "dbtypes.h"
 #include "dbselector.h"
 #include "dbmanipulator.h"
-#define INSERT_TEST_DATA
+//#define INSERT_TEST_DATA
 
 class DBProcessing
 {

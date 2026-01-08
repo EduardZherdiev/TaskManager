@@ -50,5 +50,10 @@
         <file>include/usermodel.h</file>
         <file>include/userreader.cpp</file>
         <file>include/userreader.h</file>
+        <file>qml/dialogs/DeleteDialog.qml</file>
+        <file>qml/dialogs/TaskDialog.qml</file>
+        <file>qml/components/AppTabButton.qml</file>
+        <file>qml/components/AppTextArea.qml</file>
+        <file>qml/components/AppTextField.qml</file>
     </qresource>
 </RCC>

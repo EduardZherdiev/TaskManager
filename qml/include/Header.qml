@@ -120,11 +120,18 @@ Rectangle {
             Item {
                 height: 20
             }
+            TaskDialog {
+                id: addTaskDialog
+                onSaveRequested: function(taskId, title, description, state) {
+                    console.log("Create task request", taskId, title, description, state)
+                    // TODO: propagate to TaskModel/repository to create task
+                }
+            }
 
             ImgButton {
                 imgScale: 0.8
                 source: ResourceManager.icon("add", "png")
-                onClicked: console.log("Add")
+                onClicked: addTaskDialog.openForTask(-1, "", "", 0, "", "", "")
             }
         }
     }
