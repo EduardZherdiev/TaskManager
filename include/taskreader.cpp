@@ -49,11 +49,6 @@ std::vector<Task> transform(const std::vector<DBEntry>& source)
                        if (entry.size() < 6)
                            return Task{};
 
-                       qDebug() << entry[6] << entry[6].typeName();
-                       auto dt = parseDateTime(entry[6]);
-                       qDebug() << entry[6].toString() << "-> valid:" << dt.isValid() << dt;
-
-
                        const QString title = entry[3].toString();
                        const QString description = entry[4].toString();
                        const auto taskState = static_cast<DBTypes::TaskState>(entry[5].toInt());

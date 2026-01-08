@@ -10,13 +10,15 @@ Column {
     anchors.fill: parent
     spacing: 0
 
-    property var columnWidths: [2, 1, 1, 1, 1, 1,1]
+    property var columnWidths: [3, 2, 2, 2, 2]
+    property real fixedButtonsWidth: 2*Style.smallSpacing + 72 + Style.mediumSpacing
 
     function columnWidth(index, totalWidth) {
         var sum = 0
         for (var i = 0; i < columnWidths.length; ++i)
             sum += columnWidths[i]
-        return totalWidth * columnWidths[index] / sum
+        var availableWidth = totalWidth - fixedButtonsWidth
+        return availableWidth * columnWidths[index] / sum
     }
 
     // ===== HEADER =====
@@ -65,7 +67,7 @@ Column {
             spacing: 0
 
             Repeater {
-                model: 5
+                model: 4
 
                 Text {
                     width: columnWidth(index, listView.width)
@@ -78,15 +80,6 @@ Column {
                         case 1: return createdAt || "";
                         case 2: return updatedAt || "";
                         case 3: return deletedAt || "";
-                        case 4: {
-                            switch (taskState) {
-                            case 0: return "Active";
-                            case 1: return "Completed";
-                            case 2: return "Archived";
-                            case 3: return "Deleted";
-                            default: return taskState.toString();
-                            }
-                        }
                         default: return "";
                         }
                     }
@@ -95,13 +88,23 @@ Column {
                 }
             }
 
+            ComboBox {
+                width: columnWidth(4, listView.width)
+                height: 36
+                currentIndex: taskState !== undefined ? taskState : 0
+                model: ["Active", "Completed", "Archived", "Deleted"]
+            }
+
             // actions: two columns for buttons
+            Item { width: Style.smallSpacing; height: 1 }
             ImgButton {
                 source: ResourceManager.icon("view","png")
                 height: parent.height
                 width: height
                 onClicked: console.log("View clicked for row", index)
             }
+
+            Item { width: Style.smallSpacing; height: 1 }
 
             ImgButton {
                 source: ResourceManager.icon("delete","png")
@@ -110,6 +113,8 @@ Column {
                 type: 2
                 onClicked: console.log("Delete clicked for row", index)
             }
+
+            Item { width: Style.mediumSpacing; height: 1 }
         }
 
         ScrollBar.vertical: ScrollBar {

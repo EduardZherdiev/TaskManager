@@ -70,20 +70,10 @@ bool TaskModel::updateTask()
     std::vector<Task> TaskResult;
     std::tie(requestResult, TaskResult) = m_reader.requestTaskBrowse();
 
-    qDebug() << "TaskModel::updateTask requestResult=" << requestResult << " rows=" << TaskResult.size();
-
     if (requestResult) {
         beginResetModel();
         m_Tasks.swap(TaskResult);
         endResetModel();
-
-        // Debug: log loaded tasks
-        for (const auto &t : m_Tasks) {
-            qDebug() << "Loaded task:" << t.title() << " "<<t.createdAt()<<" "
-
-                     << "createdAt:" << (t.createdAt().isValid() ? t.createdAt().toString(Qt::ISODate) : "invalid")
-                     << "taskState:" << static_cast<int>(t.taskState());
-        }
     } else {
         qWarning() << "TaskModel::updateTask failed to load tasks";
     }
