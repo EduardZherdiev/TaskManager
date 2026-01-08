@@ -12,7 +12,7 @@ class TaskReader
 public:
     TaskReader();
     std::pair<bool,
-              std::vector<Task>> requestTaskBrowse();
+              std::vector<Task>> requestTaskBrowse(bool showDeleted = false);
     ~TaskReader();
 
 private:

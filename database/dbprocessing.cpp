@@ -30,63 +30,34 @@ void DBProcessing::insertTestData()
 {
     DBManipulator dbManager;
 
-    // Create users (insert only if not exists)
+    // Create users
     int aliceId = 0;
     int bobId = 0;
     int carolId = 0;
 
-    {
-        std::vector<QVariantList> out;
-        if (m_selector.selectWhere("Users", "Login = ?", QVariantList{"alice"}, out) == DBTypes::DBResult::OK && !out.empty())
-            aliceId = out.front().size() > 1 ? out.front()[1].toInt() : 0;
-        else
-            aliceId = dbManager.insertRow("Users", {{"alice"}, {"hash_alice"}}).second;
-    }
+    aliceId = dbManager.insertRow("Users", {{"alice"}, {"hash_alice"}}).second;
+    bobId = dbManager.insertRow("Users", {{"bob"}, {"hash_bob"}}).second;
+    carolId = dbManager.insertRow("Users", {{"carol"}, {"hash_carol"}}).second;
 
-    {
-        std::vector<QVariantList> out;
-        if (m_selector.selectWhere("Users", "Login = ?", QVariantList{"bob"}, out) == DBTypes::DBResult::OK && !out.empty())
-            bobId = out.front().size() > 1 ? out.front()[1].toInt() : 0;
-        else
-            bobId = dbManager.insertRow("Users", {{"bob"}, {"hash_bob"}}).second;
-    }
-
-    {
-        std::vector<QVariantList> out;
-        if (m_selector.selectWhere("Users", "Login = ?", QVariantList{"carol"}, out) == DBTypes::DBResult::OK && !out.empty())
-            carolId = out.front().size() > 1 ? out.front()[1].toInt() : 0;
-        else
-            carolId = dbManager.insertRow("Users", {{"carol"}, {"hash_carol"}}).second;
-    }
-
-    // Create tasks for users (insert only if not exists by title+user)
-    auto insertTaskIfMissing = [&](int userId, const QString& title, const QString& desc, int state, const QDateTime& createdAt, const QDateTime& updatedAt) {
-        std::vector<QVariantList> out;
-        QString where = "Title = ? AND UserId = ?";
-        QVariantList args{title, userId};
-        if (m_selector.selectWhere("Tasks", where.toStdString(), args, out) == DBTypes::DBResult::OK && !out.empty())
-
-            return out.front().size() > 1 ? out.front()[1].toInt() : 0;
-        return dbManager.insertRow("Tasks", {QVariant(userId), QVariant(title), QVariant(desc), QVariant(state), QVariant(createdAt.toString(Qt::ISODate)), QVariant(updatedAt.isValid() ? updatedAt.toString(Qt::ISODate) : QVariant()), QVariant()}).second;
+    // Create tasks for users
+    auto insertTask = [&](int userId, const QString& title, const QString& desc, int state, const QDateTime& createdAt, const QDateTime& updatedAt) {
+        return dbManager.insertRow("Tasks", {QVariant(userId), QVariant(title), QVariant(desc), QVariant(state), QVariant(createdAt.toString(Qt::ISODate)), QVariant(updatedAt.isValid() ? updatedAt.toString(Qt::ISODate) : QString()), QVariant()}).second;
     };
 
-    insertTaskIfMissing(aliceId, "Buy groceries", "Milk, Bread, Eggs", 0, QDateTime::currentDateTime(), QDateTime());
-    insertTaskIfMissing(bobId, "Finish report", "Monthly sales report", 0, QDateTime::currentDateTime().addDays(-2), QDateTime::currentDateTime());
-    insertTaskIfMissing(carolId, "Plan trip", "Book flights and hotels", 1, QDateTime::currentDateTime().addDays(-10), QDateTime::currentDateTime().addDays(-1));
+    insertTask(aliceId, "Buy groceries", "Milk, Bread, Eggs", 0, QDateTime::currentDateTime(), QDateTime());
+    insertTask(bobId, "Finish report", "Monthly sales report", 0, QDateTime::currentDateTime().addDays(-2), QDateTime::currentDateTime());
+    insertTask(carolId, "Plan trip", "Book flights and hotels", 1, QDateTime::currentDateTime().addDays(-10), QDateTime::currentDateTime().addDays(-1));
 
-    // Create callbacks (insert only if not exists by user+description)
-    auto insertCallbackIfMissing = [&](int userId, int rate, const QString& desc, const QDateTime& createdAt) {
-        std::vector<QVariantList> out;
-        QString where = "UserId = ? AND Description = ?";
-        QVariantList args{userId, desc};
-        if (m_selector.selectWhere("Callbacks", where.toStdString(), args, out) == DBTypes::DBResult::OK && !out.empty())
-            return out.front().size() > 1 ? out.front()[1].toInt() : 0;
+    // Create callbacks
+    auto insertCallback = [&](int userId, int rate, const QString& desc, const QDateTime& createdAt) {
         return dbManager.insertRow("Callbacks", {QVariant(userId), QVariant(rate), QVariant(desc), QVariant(createdAt.toString(Qt::ISODate))}).second;
     };
 
-    insertCallbackIfMissing(aliceId, 5, "Great service", QDateTime::currentDateTime());
-    insertCallbackIfMissing(bobId, 4, "Good support", QDateTime::currentDateTime().addDays(-3));
-    insertCallbackIfMissing(carolId, 3, "Average experience", QDateTime::currentDateTime().addDays(-7));
+    insertCallback(aliceId, 5, "Great service", QDateTime::currentDateTime());
+    insertCallback(bobId, 4, "Good support", QDateTime::currentDateTime().addDays(-3));
+    insertCallback(carolId, 3, "Average experience", QDateTime::currentDateTime().addDays(-7));
+    
+    qDebug() << "Test data inserted successfully";
 }
 #endif
 
@@ -94,6 +65,13 @@ std::pair<DBTypes::DBResult, std::vector<QVariantList>> DBProcessing::requestTab
 {
     std::vector<QVariantList> result;
     DBTypes::DBResult resultState = m_selector.selectAll(selectionMapper.at(table), result);
+    return std::make_pair(resultState, std::move(result));
+}
+
+std::pair<DBTypes::DBResult, std::vector<QVariantList>> DBProcessing::requestTableDataWhere(DBTypes::DBTables table, const std::string& where, const QVariantList& args)
+{
+    std::vector<QVariantList> result;
+    DBTypes::DBResult resultState = m_selector.selectWhere(selectionMapper.at(table), where, args, result);
     return std::make_pair(resultState, std::move(result));
 }
 

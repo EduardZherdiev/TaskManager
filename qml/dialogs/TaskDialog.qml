@@ -124,7 +124,8 @@ Dialog {
                     
                     TextArea {
                         id: descriptionField
-                        width: parent.width
+                        Layout.fillWidth: true
+                        width: parent.width - 8
                         placeholderText: qsTr("Description")
                         text: taskDialog.taskDescription
                         wrapMode: TextEdit.Wrap
@@ -169,6 +170,8 @@ Dialog {
         titleField.text = taskTitle
         descriptionField.text = taskDescription
         stateCombo.currentIndex = taskState
+        // Open in Edit tab for new tasks, View tab for existing
+        tabs.currentIndex = (taskId === -1) ? 1 : 0
         open()
     }
 

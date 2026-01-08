@@ -18,7 +18,7 @@ Column {
         id: deleteDialog
         onConfirmed: function(taskId) {
             console.log("Confirmed deletion of task ID:", taskId)
-            // TODO: Call TaskModel method to delete task
+            TaskModel.deleteTask(taskId)
         }
     }
 
@@ -26,14 +26,28 @@ Column {
         id: taskDialog
         onSaveRequested: function(taskId, title, description, state) {
             console.log("Save requested", taskId, title, description, state)
-            // TODO: propagate to model/repository
+            if (taskId === -1) {
+                // Create new task
+                TaskModel.createTask(title, description, state)
+            } else {
+                // Update existing task
+                TaskModel.updateTask(taskId, title, description, state)
+            }
         }
     }
 
     function columnWidth(index, totalWidth) {
+        var activeWidths = []
+        var activeIndices = [0, 1, 2, 4]  // Title, Created, Updated, State
+        if (TaskModel.showDeleted) {
+            activeIndices = [0, 1, 2, 3, 4]  // Include Deleted column
+        }
+        
         var sum = 0
-        for (var i = 0; i < columnWidths.length; ++i)
-            sum += columnWidths[i]
+        for (var i = 0; i < activeIndices.length; ++i) {
+            sum += columnWidths[activeIndices[i]]
+        }
+        
         var availableWidth = totalWidth - fixedButtonsWidth
         return availableWidth * columnWidths[index] / sum
     }
@@ -44,21 +58,68 @@ Column {
         height: 40
         spacing: 0
 
-        Repeater {
-            model: ["Title", "Created", "Updated", "Deleted", "State", "",""]
-
-            Label {
-                width: columnWidth(index, parent.width)
-                height: parent.height
-
-                text: modelData
-                color: Style.textColor
-                font.bold: true
-
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-                elide: Text.ElideRight
-            }
+        Label {
+            width: columnWidth(0, parent.width)
+            height: parent.height
+            text: "Title"
+            color: Style.textColor
+            font.bold: true
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+            elide: Text.ElideRight
+        }
+        Label {
+            width: columnWidth(1, parent.width)
+            height: parent.height
+            text: "Created"
+            color: Style.textColor
+            font.bold: true
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+            elide: Text.ElideRight
+        }
+        Label {
+            width: columnWidth(2, parent.width)
+            height: parent.height
+            text: "Updated"
+            color: Style.textColor
+            font.bold: true
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+            elide: Text.ElideRight
+        }
+        Label {
+            width: columnWidth(3, parent.width)
+            height: parent.height
+            text: "Deleted"
+            color: Style.textColor
+            font.bold: true
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+            elide: Text.ElideRight
+            visible: TaskModel.showDeleted
+        }
+        Label {
+            width: columnWidth(4, parent.width)
+            height: parent.height
+            text: "State"
+            color: Style.textColor
+            font.bold: true
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+            elide: Text.ElideRight
+        }
+        Label {
+            width: columnWidth(4, parent.width)
+            height: parent.height
+            text: ""
+            visible: false
+        }
+        Label {
+            width: columnWidth(4, parent.width)
+            height: parent.height
+            text: ""
+            visible: false
         }
     }
 
@@ -69,40 +130,48 @@ Column {
     }
 
     // ===== BODY =====
-    ListView {
-        id: listView
+    Item {
         width: parent.width
         height: parent.height - 41
-        topMargin: 10
-        clip: true
-        model: TaskModel{}
-        spacing: Style.smallSpacing
+        
+        ListView {
+            id: listView
+            anchors.fill: parent
+            topMargin: 10
+            clip: true
+            model: TaskModel
+            spacing: Style.smallSpacing
+            visible: listView.count > 0
 
         delegate: Row {
             width: listView.width
             height: 36
             spacing: 0
 
-            Repeater {
-                model: 4
-
-                Text {
-                    width: columnWidth(index, listView.width)
-                    height: 36
-                    elide: Text.ElideRight
-
-                    property string value: {
-                        switch (index) {
-                        case 0: return title || "";
-                        case 1: return createdAt || "";
-                        case 2: return updatedAt || "";
-                        case 3: return deletedAt || "";
-                        default: return "";
-                        }
-                    }
-
-                    text: value
-                }
+            Text {
+                width: columnWidth(0, listView.width)
+                height: 36
+                elide: Text.ElideRight
+                text: title || ""
+            }
+            Text {
+                width: columnWidth(1, listView.width)
+                height: 36
+                elide: Text.ElideRight
+                text: createdAt || ""
+            }
+            Text {
+                width: columnWidth(2, listView.width)
+                height: 36
+                elide: Text.ElideRight
+                text: updatedAt || ""
+            }
+            Text {
+                width: columnWidth(3, listView.width)
+                height: 36
+                elide: Text.ElideRight
+                text: deletedAt || ""
+                visible: TaskModel.showDeleted
             }
 
             ComboBox {
@@ -144,5 +213,17 @@ Column {
             width:13
             policy: ScrollBar.AlwaysOn
         }
+    }
+    
+    Label {
+        anchors.centerIn: parent
+        visible: listView.count === 0
+        text: TaskModel.showDeleted 
+            ? qsTr("Here are no deleted records")
+            : qsTr("Here are no active records")
+        color: Style.textColor
+        font.pixelSize: 16
+        font.italic: true
+    }
     }
 }

@@ -24,11 +24,18 @@ static QDateTime parseDateTime(const QVariant& v)
     if (s.isEmpty())
         return {};
 
-    static const QLocale cLocale(QLocale::C);
-
-    QDateTime dt = cLocale.toDateTime(s, "ddd MMM d HH:mm:ss yyyy");
+    // Try ISO formats first (matches Qt/SQLite default storage)
+    QDateTime dt = QDateTime::fromString(s, Qt::ISODateWithMs);
     if (!dt.isValid())
-        dt = cLocale.toDateTime(s, "ddd MMM dd HH:mm:ss yyyy");
+        dt = QDateTime::fromString(s, Qt::ISODate);
+
+    // Fallback to legacy C-locale textual formats
+    if (!dt.isValid()) {
+        static const QLocale cLocale(QLocale::C);
+        dt = cLocale.toDateTime(s, "ddd MMM d HH:mm:ss yyyy");
+        if (!dt.isValid())
+            dt = cLocale.toDateTime(s, "ddd MMM dd HH:mm:ss yyyy");
+    }
 
     return dt;
 }
@@ -69,12 +76,20 @@ std::vector<Task> transform(const std::vector<DBEntry>& source)
 }
 
 
-std::pair<bool, std::vector<Task>> TaskReader::requestTaskBrowse()
+std::pair<bool, std::vector<Task>> TaskReader::requestTaskBrowse(bool showDeleted)
 {
     DBResult result;
     std::vector<DBEntry> entries;
-    std::tie(result, entries) = m_dbProcessor->requestTableData(DBTables::Tasks);
-    qDebug() << "TaskReader::requestTaskBrowse result=" << static_cast<int>(result) << " entries=" << entries.size();
+    
+    if (showDeleted) {
+        // Show only deleted tasks: WHERE DeletedAt IS NOT NULL
+        std::tie(result, entries) = m_dbProcessor->requestTableDataWhere(DBTables::Tasks, "DeletedAt IS NOT NULL", {});
+    } else {
+        // Show only non-deleted tasks: WHERE DeletedAt IS NULL
+        std::tie(result, entries) = m_dbProcessor->requestTableDataWhere(DBTables::Tasks, "DeletedAt IS NULL", {});
+    }
+    
+    qDebug() << "TaskReader::requestTaskBrowse showDeleted=" << showDeleted << " result=" << static_cast<int>(result) << " entries=" << entries.size();
     return std::make_pair(result == DBResult::OK,
                           transform(entries));
 }

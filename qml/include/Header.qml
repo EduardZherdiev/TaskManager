@@ -44,7 +44,9 @@ Rectangle {
                     }
                     ComboBox {
                         id: sortBy
-                        model: ["Created at", "Title", "State", "Updated at", "Deleted at"]
+                        model: TaskModel.showDeleted 
+                            ? ["Created at", "Title", "State", "Updated at", "Deleted at"]
+                            : ["Created at", "Title", "State", "Updated at"]
                     }
                 }
                 ImgButton {
@@ -89,7 +91,10 @@ Rectangle {
 
                 width: parent.width
                 anchors.horizontalCenter: parent.horizontalCenter
-                checked: false
+                checked: TaskModel.showDeleted
+                onCheckedChanged: {
+                    TaskModel.showDeleted = checked
+                }
             }
         }
 
@@ -124,7 +129,7 @@ Rectangle {
                 id: addTaskDialog
                 onSaveRequested: function(taskId, title, description, state) {
                     console.log("Create task request", taskId, title, description, state)
-                    // TODO: propagate to TaskModel/repository to create task
+                    TaskModel.createTask(title, description, state)
                 }
             }
 

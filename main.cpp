@@ -14,8 +14,12 @@ int main(int argc, char *argv[])
     QQuickStyle::setStyle("Fusion");
 
     QQmlApplicationEngine engine;
-    // Register C++ models under the "core" QML module so QML can instantiate them
-    qmlRegisterType<TaskModel>("core", 1, 0, "TaskModel");
+    // Register TaskModel as singleton so all QML files use the same instance
+    qmlRegisterSingletonType<TaskModel>("core", 1, 0, "TaskModel", [](QQmlEngine *engine, QJSEngine *scriptEngine) -> QObject* {
+        Q_UNUSED(engine)
+        Q_UNUSED(scriptEngine)
+        return new TaskModel();
+    });
     qmlRegisterType<CallbackModel>("core", 1, 0, "CallbackModel");
     qmlRegisterType<UserModel>("core", 1, 0, "UserModel");
     engine.addImportPath(":/qml");
