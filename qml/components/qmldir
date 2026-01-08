@@ -1,0 +1,12 @@
+module components
+Button 1.0 AppButton.qml
+Text 1.0 AppText.qml
+Label 1.0 AppLabel.qml
+SmallText 1.0 AppSmallText.qml
+LargeText 1.0 AppLargeText.qml
+Icon 1.0 AppIcon.qml
+Image 1.0 AppIcon.qml
+ImgButton 1.0 AppImgButton.qml
+ComboBox 1.0 AppComboBox.qml
+Switch 1.0 AppSwitch.qml
+RadioButton 1.0 AppRadioButton.qml

@@ -1,0 +1,45 @@
+# Qt / qmake build outputs
+build/
+*.qmake.stash
+Makefile
+Makefile.*
+
+# Generated Qt files
+moc_*.cpp
+ui_*.h
+qrc_*.cpp
+*.qmlc
+*.jsc
+*.qm
+*.qrc.depends
+*.qrc.release
+*.qrc.debug
+
+# Binary / object artifacts
+*.o
+*.obj
+*.dll
+*.exe
+*.pdb
+*.ilk
+
+# Qt Creator / IDE files
+*.pro.user
+*.pro.user.*
+*.user
+*.user.*
+*.autosave
+.qtcreator/
+
+# Local data
+TaskManagerDB.sqlite
+
+# OS noise
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Node / package managers
+node_modules/

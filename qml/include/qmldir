@@ -1,0 +1,4 @@
+module include
+Header 1.0 Header.qml
+Body 1.0 Body.qml
+Footer 1.0 Footer.qml
