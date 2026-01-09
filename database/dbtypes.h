@@ -26,8 +26,7 @@ enum class DBState {
 enum class TaskState : int {
     Active = 0,
     Completed = 1,
-    Archived = 2,
-    Deleted = 3
+    Archived = 2
 };
 
 using DBEntry = QVariantList;

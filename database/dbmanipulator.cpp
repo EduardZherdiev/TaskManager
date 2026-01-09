@@ -28,8 +28,16 @@ DBResult DBManipulator::updateValue(const std::string& tableName, const QVector<
 {
     Q_ASSERT((columns.size() == values.size()) && columns.startsWith("Id"));
 
-    const std::string& query = generateUpdateQuery(tableName, columns, values);
-    const auto& result = m_dbManager.execute(query);
+    const std::string& query = generateUpdateQuery(tableName, columns);
+
+    // Bind values in the same order as the SET clause, then append rowid for WHERE
+    QVariantList bindValues;
+    for (int i = 1; i < values.size(); ++i) {
+        bindValues << values[i];
+    }
+    bindValues << values.first();
+
+    const auto& result = m_dbManager.execute(query, bindValues);
     return result.first;
 }
 
@@ -63,23 +71,19 @@ std::string DBManipulator::generateQuery(const std::string& tableName, size_t pa
     return query;
 }
 
-std::string DBManipulator::generateUpdateQuery(const std::string tableName, const QVector<QString>& columns, const QVariantList& values) const
+std::string DBManipulator::generateUpdateQuery(const std::string& tableName, const QVector<QString>& columns) const
 {
     std::string query = "UPDATE " + tableName +
-                        " SET " + generateSetString(columns, values) +
-                        " WHERE rowid = " + values.first().toString().toStdString();
+                        " SET " + generateSetString(columns) +
+                        " WHERE rowid = ?";
     return query;
 }
 
-std::string DBManipulator::generateSetString(const QVector<QString>& columns, const QVariantList& values) const
+std::string DBManipulator::generateSetString(const QVector<QString>& columns) const
 {
     std::string result;
-    auto columnValue = values.cbegin() + 1; // 0 is rowid
-    for (auto column = columns.cbegin() + 1;
-         column != columns.cend(); ++column)
-    {
-        result += column->toStdString() + " = '" + columnValue->toString().toStdString() + "',";
-        ++columnValue;
+    for (auto column = columns.cbegin() + 1; column != columns.cend(); ++column) {
+        result += column->toStdString() + " = ?,";
     }
     result.pop_back(); // remove last ","
     return result;

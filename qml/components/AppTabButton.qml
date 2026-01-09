@@ -14,6 +14,7 @@ TabButton {
                ? (control.pressed ? Style.primaryPressed : Style.primaryColor)
                : (control.hovered ? Style.componentHover : Style.componentBackground)
         border.color: control.activeFocus ? Style.componentFocusRing : Style.componentOutline
+        opacity: control.enabled ? 1.0 : Style.disabledOpacity
     }
 
     contentItem: Text {

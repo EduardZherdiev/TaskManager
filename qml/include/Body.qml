@@ -177,8 +177,21 @@ Column {
             ComboBox {
                 width: columnWidth(4, listView.width)
                 height: 36
-                currentIndex: taskState !== undefined ? taskState : 0
-                model: ["Active", "Completed", "Archived", "Deleted"]
+                currentIndex: {
+                    var idx = taskState !== undefined ? Number(taskState) : 0
+                    var maxCount = 3
+                    if (model && model.length !== undefined)
+                        maxCount = model.length
+                    else if (model && model.count !== undefined)
+                        maxCount = model.count
+                    return Math.min(idx, maxCount - 1)
+                }
+                model: ["Active", "Completed", "Archived"]
+                onActivated: function(index) {
+                    if (taskState !== index) {
+                        TaskModel.updateTask(id, title, description, index)
+                    }
+                }
             }
 
             // actions: two columns for buttons
@@ -198,11 +211,23 @@ Column {
                 source: ResourceManager.icon("delete","png")
                 height: parent.height
                 width: height
+                visible: !TaskModel.showDeleted
                 type: 2
                 onClicked: {
                     deleteDialog.taskId = id
                     deleteDialog.taskTitle = title
                     deleteDialog.open()
+                }
+            }
+
+            ImgButton {
+                source: ResourceManager.icon("restore","png")
+                height: parent.height
+                width: height
+                visible: TaskModel.showDeleted
+                type: 1
+                onClicked: {
+                    TaskModel.restoreTask(id)
                 }
             }
 

@@ -102,14 +102,14 @@ bool TaskModel::createTask(const QString& title, const QString& description, int
     if (!m_dbProcessor) {
         m_dbProcessor = new DBProcessing();
     }
-    
+
     QVariantList data;
     data << defaultUserId()  // Valid UserId from Users table
          << title
          << description
          << state
          << QDateTime::currentDateTime()
-         << QDateTime::currentDateTime()
+         << QVariant()
          << QVariant();  // DeletedAt (null for new tasks)
     
     auto [result, taskId] = m_dbProcessor->requestAddRow(DBTypes::DBTables::Tasks, data);
@@ -152,19 +152,54 @@ bool TaskModel::updateTask(int taskId, const QString& title, const QString& desc
     if (!m_dbProcessor) {
         m_dbProcessor = new DBProcessing();
     }
-    
+
+    const Task* existingTask = nullptr;
+    for (const auto& t : m_Tasks) {
+        if (t.id() == taskId) {
+            existingTask = &t;
+            break;
+        }
+    }
+
     QVector<QString> columns;
-    columns << "Id" << "Title" << "Description" << "State" << "UpdatedAt";
-    
     QVariantList values;
-    values << taskId
-           << title
-           << description
-           << state
-           << QDateTime::currentDateTime();
-    
+
+    columns << "Id";
+    values << taskId;
+
+    bool changed = false;
+    if (existingTask) {
+        if (title != existingTask->title()) {
+            columns << "Title";
+            values << title;
+            changed = true;
+        }
+        if (description != existingTask->description()) {
+            columns << "Description";
+            values << description;
+            changed = true;
+        }
+        if (state != static_cast<int>(existingTask->taskState())) {
+            columns << "State";
+            values << state;
+            changed = true;
+        }
+    } else {
+        // Fallback: update everything if we can't find the task in memory
+        columns << "Title" << "Description" << "State";
+        values << title << description << state;
+        changed = true;
+    }
+
+    if (!changed) {
+        return true; // nothing to update
+    }
+
+    columns << "UpdatedAt";
+    values << QDateTime::currentDateTime();
+
     auto result = m_dbProcessor->requestUpdate(DBTypes::DBTables::Tasks, columns, values);
-    
+
     if (result == DBTypes::DBResult::OK) {
         qDebug() << "Task updated with ID:" << taskId;
         this->updateTask();
@@ -198,5 +233,31 @@ bool TaskModel::deleteTask(int taskId)
     }
     
     qWarning() << "Failed to delete task";
+    return false;
+}
+
+bool TaskModel::restoreTask(int taskId)
+{
+    if (!m_dbProcessor) {
+        m_dbProcessor = new DBProcessing();
+    }
+
+    // Remove DeletedAt (set NULL) and reset state to Active (0)
+    QVector<QString> columns;
+    columns << "Id" << "DeletedAt";
+
+    QVariantList values;
+    values << taskId
+           << QVariant()  ;     // State -> Active
+
+    auto result = m_dbProcessor->requestUpdate(DBTypes::DBTables::Tasks, columns, values);
+
+    if (result == DBTypes::DBResult::OK) {
+        qDebug() << "Task restored with ID:" << taskId;
+        updateTask();
+        return true;
+    }
+
+    qWarning() << "Failed to restore task";
     return false;
 }

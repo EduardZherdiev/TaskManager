@@ -21,6 +21,7 @@ public:
     Q_INVOKABLE bool createTask(const QString& title, const QString& description, int state);
     Q_INVOKABLE bool updateTask(int taskId, const QString& title, const QString& description, int state);
     Q_INVOKABLE bool deleteTask(int taskId);
+    Q_INVOKABLE bool restoreTask(int taskId);
 
 signals:
     void showDeletedChanged();

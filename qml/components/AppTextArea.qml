@@ -25,6 +25,16 @@ TextArea {
     }
 
     ScrollBar.vertical: ScrollBar {
-        policy: ScrollBar.AsNeeded
+        policy: ScrollBar.AlwaysOn
+        active: true
+        width: 13
+        contentItem: Rectangle {
+            implicitWidth: 6
+            radius: 3
+            color: "black"
+        }
+        background: Rectangle {
+            color: "black"
+        }
     }
 }

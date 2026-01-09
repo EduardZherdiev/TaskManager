@@ -25,14 +25,13 @@ Dialog {
     background: Rectangle {
         radius: Style.largeRadius
         color: Style.surfaceColor
-        border.color: Style.componentOutline
-        border.width: 1
+        border.width: 0 // remove outline line under buttons
     }
 
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: Style.smallSpacing
-        spacing: Style.mediumSpacing
+        spacing: Style.smallSpacing
 
         // Title
         Label {
@@ -47,7 +46,13 @@ Dialog {
             id: tabs
             Layout.fillWidth: true
             currentIndex: 0
-            TabButton { text: qsTr("View")  }
+            spacing: Style.smallSpacing
+            background: Item {}
+
+            TabButton {
+                text: qsTr("View")
+                enabled: taskDialog.taskId !== -1
+            }
             TabButton { text: qsTr("Edit") }
         }
 
@@ -55,6 +60,7 @@ Dialog {
             Layout.fillWidth: true
             Layout.fillHeight: true
             currentIndex: tabs.currentIndex
+
 
             // View tab
             ColumnLayout {
@@ -70,7 +76,17 @@ Dialog {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 100
                     clip: true
-                    ScrollBar.vertical.policy: ScrollBar.AsNeeded
+                    ScrollBar.vertical.policy: ScrollBar.AlwaysOn
+                    ScrollBar.vertical.active: true
+                    ScrollBar.vertical.width: 13
+                    ScrollBar.vertical.contentItem: Rectangle {
+                        implicitWidth: 6
+                        radius: 3
+                        color: Style.componentBackground
+                    }
+                    ScrollBar.vertical.background: Rectangle {
+                        color: "transparent"
+                    }
 
                     Label {
                         width: parent.width - 8
@@ -116,26 +132,46 @@ Dialog {
                     placeholderText: qsTr("Title")
                     text: taskDialog.taskTitle
                 }
-                ScrollView {
+                Flickable {
+                    id: flickable
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 160
+                    Layout.preferredHeight: 180
                     clip: true
-                    ScrollBar.vertical.policy: ScrollBar.AsNeeded
+                    contentWidth: descriptionField.width
+                    contentHeight: descriptionField.contentHeight + 20
+                    
+                    ScrollBar.vertical: ScrollBar {
+                        policy: ScrollBar.AsNeeded
+                        width: 13
+                        contentItem: Rectangle {
+                            implicitWidth: 6
+                            radius: 3
+                            color: Style.componentBackground
+                        }
+                        background: Rectangle {
+                            color: "transparent"
+                        }
+                    }
                     
                     TextArea {
                         id: descriptionField
-                        Layout.fillWidth: true
-                        width: parent.width - 8
-                        placeholderText: qsTr("Description")
+                        width: flickable.width
+                        height: Math.max(flickable.height, contentHeight + 20)
                         text: taskDialog.taskDescription
+                        placeholderText: qsTr("Description")
                         wrapMode: TextEdit.Wrap
+                        background: Rectangle {
+                            color: Style.controlBackground
+                            border.color: descriptionField.activeFocus ? Style.controlActiveBorder : Style.controlBorder
+                            radius: Style.mediumRadius
+                        }
                     }
                 }
                 ComboBox {
                     id: stateCombo
                     Layout.fillWidth: true
-                    model: [qsTr("Active"), qsTr("Completed"), qsTr("Archived"), qsTr("Deleted")]
-                    currentIndex: taskDialog.taskState
+                    model: [qsTr("Active"), qsTr("Completed"), qsTr("Archived")]
+                    currentIndex: Math.min(taskDialog.taskState, model.count - 1)
                 }
             }
         }
@@ -180,7 +216,6 @@ Dialog {
         case 0: return qsTr("Active");
         case 1: return qsTr("Completed");
         case 2: return qsTr("Archived");
-        case 3: return qsTr("Deleted");
         default: return qsTr("Unknown");
         }
     }

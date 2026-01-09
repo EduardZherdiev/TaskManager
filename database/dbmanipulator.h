@@ -23,9 +23,9 @@ private:
     DBManager& m_dbManager;
     std::string generateBindString(size_t paramCount) const;
     std::string generateQuery(const std::string& tableName, size_t paramCount) const;
-    std::string generateUpdateQuery(const std::string tableName,
-                                    const QVector<QString>& columns, const QVariantList& values) const;
-    std::string generateSetString(const QVector<QString>& columns, const QVariantList& values) const;
+    std::string generateUpdateQuery(const std::string& tableName,
+                                    const QVector<QString>& columns) const;
+    std::string generateSetString(const QVector<QString>& columns) const;
 };
 
 #endif // DBINSERTER_H
