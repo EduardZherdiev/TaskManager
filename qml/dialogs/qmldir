@@ -2,3 +2,6 @@ module dialogs
 SettingsDialog 1.0 SettingsDialog.qml
 DeleteDialog 1.0 DeleteDialog.qml
 TaskDialog 1.0 TaskDialog.qml
+UserRegistrationDialog 1.0 UserRegistrationDialog.qml
+UserSignInDialog 1.0 UserSignInDialog.qml
+UserEditDialog 1.0 UserEditDialog.qml

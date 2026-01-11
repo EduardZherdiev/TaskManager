@@ -5,6 +5,8 @@ import QtQuick.Layouts
 import StyleModule 1.0
 import include
 import components
+import core
+import dialogs 1.0
 
 ApplicationWindow {
 
@@ -14,6 +16,26 @@ ApplicationWindow {
     height: 700
     title: qsTr("Task manager")
     property var styleWindow: null
+
+    Component.onCompleted: {
+        // Apply saved theme on startup
+        Style.isDarkTheme = AppSettings.isDarkTheme
+        
+        // Try auto-login if remember is enabled and credentials are saved
+        if (AppSettings.rememberLogin && AppSettings.savedLogin !== "" && AppSettings.savedPassword !== "") {
+            if (UserModel.signIn(AppSettings.savedLogin, AppSettings.savedPassword)) {
+                console.log("Auto-login successful for:", AppSettings.savedLogin)
+                return
+            } else {
+                console.log("Auto-login failed, clearing saved credentials")
+                AppSettings.savedLogin = ""
+                AppSettings.savedPassword = ""
+            }
+        }
+        
+        if (UserModel.currentUserId < 0)
+            signInDialog.open()
+    }
 
     Rectangle {
         id: _background
@@ -25,6 +47,36 @@ ApplicationWindow {
     header: Header{}
 
     Body{}
+
+    UserSignInDialog {
+        id: signInDialog
+        onSignInRequested: function(login, password) {
+            if (!UserModel.signIn(login, password)) {
+                showError(UserModel.lastError)
+                return
+            }
+            close()
+        }
+        onRequestRegister: {
+            close()
+            registrationDialog.open()
+        }
+    }
+
+    UserRegistrationDialog {
+        id: registrationDialog
+        onRegistrationRequested: function(login, password) {
+            if (!UserModel.registerUser(login, password)) {
+                showError(UserModel.lastError)
+                return
+            }
+            close()
+        }
+        onRequestSignIn: {
+            close()
+            signInDialog.open()
+        }
+    }
 
     footer: Footer{}
 

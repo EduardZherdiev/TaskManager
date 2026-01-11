@@ -76,20 +76,28 @@ std::vector<Task> transform(const std::vector<DBEntry>& source)
 }
 
 
-std::pair<bool, std::vector<Task>> TaskReader::requestTaskBrowse(bool showDeleted)
+std::pair<bool, std::vector<Task>> TaskReader::requestTaskBrowse(bool showDeleted, int userId)
 {
     DBResult result;
     std::vector<DBEntry> entries;
     
-    if (showDeleted) {
-        // Show only deleted tasks: WHERE DeletedAt IS NOT NULL
-        std::tie(result, entries) = m_dbProcessor->requestTableDataWhere(DBTables::Tasks, "DeletedAt IS NOT NULL", {});
-    } else {
-        // Show only non-deleted tasks: WHERE DeletedAt IS NULL
-        std::tie(result, entries) = m_dbProcessor->requestTableDataWhere(DBTables::Tasks, "DeletedAt IS NULL", {});
+    QVariantList args;
+    std::string where;
+
+    if (userId >= 0) {
+        where = "UserId = ? AND ";
+        args << userId;
     }
+
+    if (showDeleted) {
+        where += "DeletedAt IS NOT NULL";
+    } else {
+        where += "DeletedAt IS NULL";
+    }
+
+    std::tie(result, entries) = m_dbProcessor->requestTableDataWhere(DBTables::Tasks, where, args);
     
-    qDebug() << "TaskReader::requestTaskBrowse showDeleted=" << showDeleted << " result=" << static_cast<int>(result) << " entries=" << entries.size();
+    qDebug() << "TaskReader::requestTaskBrowse showDeleted=" << showDeleted << " userId=" << userId << " result=" << static_cast<int>(result) << " entries=" << entries.size();
     return std::make_pair(result == DBResult::OK,
                           transform(entries));
 }

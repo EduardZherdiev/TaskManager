@@ -56,5 +56,10 @@
         <file>qml/components/AppTextArea.qml</file>
         <file>qml/components/AppTextField.qml</file>
         <file>assets/icons/restore.png</file>
+        <file>qml/core/AppSettings.qml</file>
+        <file>qml/dialogs/UserEditDialog.qml</file>
+        <file>qml/dialogs/UserRegistrationDialog.qml</file>
+        <file>qml/dialogs/UserSignInDialog.qml</file>
+        <file>qml/components/AppCheckBox.qml</file>
     </qresource>
 </RCC>

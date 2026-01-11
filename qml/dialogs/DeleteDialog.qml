@@ -10,6 +10,7 @@ Dialog {
     height: 150
     parent: Overlay.overlay
     anchors.centerIn: Overlay.overlay
+    closePolicy: Dialog.NoAutoClose
 
     property string taskTitle: ""
     property int taskId: -1

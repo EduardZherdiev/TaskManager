@@ -4,7 +4,7 @@ import StyleModule 1.0
 import QtQuick.Effects
 import core
 import components
-import dialogs
+import dialogs 1.0
 
 Rectangle {
     width: parent.width
@@ -47,6 +47,10 @@ Rectangle {
                         model: TaskModel.showDeleted 
                             ? ["Created at", "Title", "State", "Updated at", "Deleted at"]
                             : ["Created at", "Title", "State", "Updated at"]
+                        currentIndex: TaskModel.sortField
+                        onActivated: function(index) {
+                            TaskModel.sortField = index
+                        }
                     }
                 }
                 ImgButton {
@@ -55,7 +59,10 @@ Rectangle {
                     imgScale: 1.3
                     anchors.bottom: parent.bottom
                     source: ResourceManager.icon(sortRow.sortImg, "png")
-                    onClicked: sortRow.sort = !sortRow.sort
+                    onClicked: {
+                        sortRow.sort = !sortRow.sort
+                        TaskModel.sortAscending = sortRow.sort
+                    }
                 }
             }
         }
@@ -70,6 +77,9 @@ Rectangle {
 
             ImgButton {
                 source: ResourceManager.icon("refresh", "png")
+                onClicked: {
+                    TaskModel.reloadTasks()
+                }
             }
         }
 
@@ -108,8 +118,95 @@ Rectangle {
 
             SettingsDialog {
                 id: settingsDialog
+                onProfileEditRequested: {
+                    userEditDialog.openForUser(UserModel.currentUserId, UserModel.currentUserLogin)
+                    userEditDialog.open()
+                }
+                onSignOutRequested: {
+                    // Clear saved credentials if not remembering
+                    if (!AppSettings.rememberLogin) {
+                        AppSettings.savedLogin = ""
+                        AppSettings.savedPassword = ""
+                    }
+                    // After sign out, open sign-in dialog
+                    signInDialog.open()
+                }
             }
 
+            UserEditDialog {
+                id: userEditDialog
+                onUpdateRequested: function(userId, newLogin, oldPassword, newPassword) {
+                    if (!UserModel.updateUser(newLogin, oldPassword, newPassword)) {
+                        var errorMsg = UserModel.lastError
+                        // Show password error in the specific field
+                        if (errorMsg.indexOf("password") !== -1 && errorMsg.indexOf("incorrect") !== -1) {
+                            userEditDialog.showPasswordError(errorMsg)
+                        } else {
+                            userEditDialog.showError(errorMsg)
+                        }
+                        return
+                    }
+                    
+                    // Update saved credentials if remember is enabled
+                    if (AppSettings.rememberLogin) {
+                        AppSettings.savedLogin = newLogin
+                        if (newPassword !== "") {
+                            AppSettings.savedPassword = newPassword
+                        }
+                    }
+                    
+                    userEditDialog.close()
+                }
+                onSignOutRequested: {
+                    // After sign out, open sign-in dialog
+                    signInDialog.open()
+                }
+            }
+
+            UserSignInDialog {
+                id: signInDialog
+                onSignInRequested: function(login, password) {
+                    if (!UserModel.signIn(login, password)) {
+                        showError(UserModel.lastError)
+                        return
+                    }
+                    
+                    // Save credentials if remember is enabled
+                    if (AppSettings.rememberLogin) {
+                        AppSettings.savedLogin = login
+                        AppSettings.savedPassword = password
+                    } else {
+                        AppSettings.savedLogin = ""
+                        AppSettings.savedPassword = ""
+                    }
+                    
+                    close()
+                }
+                onRequestRegister: {
+                    registrationDialog.open()
+                }
+            }
+
+            UserRegistrationDialog {
+                id: registrationDialog
+                onRegistrationRequested: function(login, password) {
+                    if (!UserModel.registerUser(login, password)) {
+                        showError(UserModel.lastError)
+                        return
+                    }
+                    
+                    // Save credentials if remember is enabled
+                    if (AppSettings.rememberLogin) {
+                        AppSettings.savedLogin = login
+                        AppSettings.savedPassword = password
+                    }
+                    
+                    close()
+                }
+                onRequestSignIn: {
+                    signInDialog.open()
+                }
+            }
 
             ImgButton {
                 imgScale: 1.2

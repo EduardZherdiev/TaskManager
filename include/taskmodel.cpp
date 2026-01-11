@@ -2,6 +2,7 @@
 #include <QQmlEngine>
 #include <QDebug>
 #include <QDateTime>
+#include <algorithm>
 #include "database/dbprocessing.h"
 
 bool TaskModel::showDeleted() const
@@ -17,6 +18,67 @@ void TaskModel::setShowDeleted(bool show)
     m_showDeleted = show;
     emit showDeletedChanged();
     updateTask();
+}
+
+int TaskModel::sortField() const
+{
+    return m_sortField;
+}
+
+void TaskModel::setSortField(int field)
+{
+    if (m_sortField == field)
+        return;
+    
+    m_sortField = field;
+    emit sortFieldChanged();
+    
+    // Trigger view update
+    beginResetModel();
+    sortTasks();
+    endResetModel();
+}
+
+bool TaskModel::sortAscending() const
+{
+    return m_sortAscending;
+}
+
+void TaskModel::setSortAscending(bool ascending)
+{
+    if (m_sortAscending == ascending)
+        return;
+    
+    m_sortAscending = ascending;
+    emit sortAscendingChanged();
+    
+    // Trigger view update
+    beginResetModel();
+    sortTasks();
+    endResetModel();
+}
+
+int TaskModel::currentUserId() const
+{
+    return m_currentUserId;
+}
+
+QString TaskModel::currentUserLogin() const
+{
+    return m_currentUserLogin;
+}
+
+QString TaskModel::lastError() const
+{
+    return m_lastError;
+}
+
+void TaskModel::setError(const QString& err)
+{
+    if (m_lastError == err)
+        return;
+    m_lastError = err;
+    emit lastErrorChanged();
 }
 
 TaskModel::TaskModel()
@@ -82,13 +144,21 @@ QHash<int, QByteArray> TaskModel::roleNames() const
 
 bool TaskModel::updateTask()
 {
+    if (m_currentUserId < 0) {
+        beginResetModel();
+        m_Tasks.clear();
+        endResetModel();
+        return true;
+    }
+
     bool requestResult {false};
     std::vector<Task> TaskResult;
-    std::tie(requestResult, TaskResult) = m_reader.requestTaskBrowse(m_showDeleted);
+    std::tie(requestResult, TaskResult) = m_reader.requestTaskBrowse(m_showDeleted, m_currentUserId);
 
     if (requestResult) {
         beginResetModel();
         m_Tasks.swap(TaskResult);
+        sortTasks();
         endResetModel();
     } else {
         qWarning() << "TaskModel::updateTask failed to load tasks";
@@ -97,14 +167,58 @@ bool TaskModel::updateTask()
     return requestResult;
 }
 
+void TaskModel::sortTasks()
+{
+    if (m_Tasks.empty())
+        return;
+
+    std::sort(m_Tasks.begin(), m_Tasks.end(), [this](const Task& a, const Task& b) {
+        bool result = false;
+        
+        switch (m_sortField) {
+        case 0: // CreatedAt
+            result = a.createdAt() < b.createdAt();
+            break;
+        case 1: // Title
+            result = a.title().toLower() < b.title().toLower();
+            break;
+        case 2: // State
+            result = static_cast<int>(a.taskState()) < static_cast<int>(b.taskState());
+            break;
+        case 3: // UpdatedAt
+            result = a.updatedAt() < b.updatedAt();
+            break;
+        case 4: // DeletedAt
+            if (!a.deletedAt().isValid() && b.deletedAt().isValid())
+                result = false;
+            else if (a.deletedAt().isValid() && !b.deletedAt().isValid())
+                result = true;
+            else if (a.deletedAt().isValid() && b.deletedAt().isValid())
+                result = a.deletedAt() < b.deletedAt();
+            else
+                result = false;
+            break;
+        default:
+            result = a.createdAt() < b.createdAt();
+        }
+        
+        return m_sortAscending ? result : !result;
+    });
+}
+
 bool TaskModel::createTask(const QString& title, const QString& description, int state)
 {
+    if (m_currentUserId < 0) {
+        setError("No user signed in");
+        return false;
+    }
+
     if (!m_dbProcessor) {
         m_dbProcessor = new DBProcessing();
     }
 
     QVariantList data;
-    data << defaultUserId()  // Valid UserId from Users table
+    data << m_currentUserId  // Valid UserId from Users table
          << title
          << description
          << state
@@ -147,8 +261,94 @@ int TaskModel::defaultUserId()
     return add.second;
 }
 
+bool TaskModel::signIn(const QString& login, const QString& password)
+{
+    setError("");
+    if (!m_dbProcessor) {
+        m_dbProcessor = new DBProcessing();
+    }
+
+    QVariantList args;
+    args << login << password;
+    auto res = m_dbProcessor->requestTableDataWhere(DBTypes::DBTables::Users,
+                                                    "Login = ? AND PasswordHash = ?",
+                                                    args);
+
+    if (res.first != DBTypes::DBResult::OK || res.second.empty()) {
+        setError("User not found or password is incorrect");
+        return false;
+    }
+
+    const auto &row = res.second.front();
+    if (row.size() < 2) {
+        setError("Invalid user record");
+        return false;
+    }
+
+    m_currentUserId = row[1].toInt();
+    m_currentUserLogin = login;
+    emit currentUserChanged();
+    updateTask();
+    return true;
+}
+
+bool TaskModel::registerUser(const QString& login, const QString& password)
+{
+    setError("");
+    if (login.trimmed().isEmpty()) {
+        setError("Login cannot be empty");
+        return false;
+    }
+    if (password.isEmpty()) {
+        setError("Password cannot be empty");
+        return false;
+    }
+    if (!m_dbProcessor) {
+        m_dbProcessor = new DBProcessing();
+    }
+
+    // Check if login exists
+    QVariantList args;
+    args << login;
+    auto check = m_dbProcessor->requestTableDataWhere(DBTypes::DBTables::Users,
+                                                      "Login = ?",
+                                                      args);
+    if (check.first == DBTypes::DBResult::OK && !check.second.empty()) {
+        setError("User already exists");
+        return false;
+    }
+
+    QVariantList data;
+    data << login << password;
+    auto add = m_dbProcessor->requestAddRow(DBTypes::DBTables::Users, data);
+    if (add.first != DBTypes::DBResult::OK) {
+        setError("Failed to register user");
+        return false;
+    }
+
+    // Auto sign-in
+    m_currentUserId = add.second;
+    m_currentUserLogin = login;
+    emit currentUserChanged();
+    updateTask();
+    return true;
+}
+
+void TaskModel::signOut()
+{
+    m_currentUserId = -1;
+    m_currentUserLogin.clear();
+    emit currentUserChanged();
+    updateTask();
+}
+
 bool TaskModel::updateTask(int taskId, const QString& title, const QString& description, int state)
 {
+    if (m_currentUserId < 0) {
+        setError("No user signed in");
+        return false;
+    }
+
     if (!m_dbProcessor) {
         m_dbProcessor = new DBProcessing();
     }
@@ -210,8 +410,13 @@ bool TaskModel::updateTask(int taskId, const QString& title, const QString& desc
     return false;
 }
 
-bool TaskModel::deleteTask(int taskId)
+bool TaskModel::softDeleteTask(int taskId)
 {
+    if (m_currentUserId < 0) {
+        setError("No user signed in");
+        return false;
+    }
+    
     if (!m_dbProcessor) {
         m_dbProcessor = new DBProcessing();
     }
@@ -227,17 +432,45 @@ bool TaskModel::deleteTask(int taskId)
     auto result = m_dbProcessor->requestUpdate(DBTypes::DBTables::Tasks, columns, values);
     
     if (result == DBTypes::DBResult::OK) {
-        qDebug() << "Task deleted with ID:" << taskId;
+        qDebug() << "Task soft deleted with ID:" << taskId;
         updateTask();
         return true;
     }
     
+    qWarning() << "Failed to soft delete task";
+    return false;
+}
+
+bool TaskModel::deleteTask(int taskId)
+{
+    if (m_currentUserId < 0) {
+        setError("No user signed in");
+        return false;
+    }
+
+    if (!m_dbProcessor) {
+        m_dbProcessor = new DBProcessing();
+    }
+
+    auto result = m_dbProcessor->requestDelete(DBTypes::DBTables::Tasks,taskId);
+
+    if (result == DBTypes::DBResult::OK) {
+        qDebug() << "Task deleted with ID:" << taskId;
+        updateTask();
+        return true;
+    }
+
     qWarning() << "Failed to delete task";
     return false;
 }
 
 bool TaskModel::restoreTask(int taskId)
 {
+    if (m_currentUserId < 0) {
+        setError("No user signed in");
+        return false;
+    }
+
     if (!m_dbProcessor) {
         m_dbProcessor = new DBProcessing();
     }
@@ -260,4 +493,10 @@ bool TaskModel::restoreTask(int taskId)
 
     qWarning() << "Failed to restore task";
     return false;
+}
+
+void TaskModel::reloadTasks()
+{
+    qDebug() << "Reloading tasks from database";
+    updateTask();
 }

@@ -10,6 +10,7 @@ ImgButton 1.0 AppImgButton.qml
 ComboBox 1.0 AppComboBox.qml
 Switch 1.0 AppSwitch.qml
 RadioButton 1.0 AppRadioButton.qml
+CheckBox 1.0 AppCheckBox.qml
 TabButton 1.0 AppTabButton.qml
 TextField 1.0 AppTextField.qml
 TextArea 1.0 AppTextArea.qml

@@ -12,7 +12,11 @@ Column {
     spacing: 0
 
     property var columnWidths: [3, 2, 2, 2, 2]
-    property real fixedButtonsWidth: 2*Style.smallSpacing + 72 + Style.mediumSpacing
+    property real baseFixedButtonsWidth: 2*Style.smallSpacing + 72 + Style.mediumSpacing
+    property real fixedButtonsWidth: TaskModel.showDeleted 
+        ? baseFixedButtonsWidth + Style.smallSpacing + 36 
+        : baseFixedButtonsWidth
+
 
     DeleteDialog {
         id: deleteDialog
@@ -211,14 +215,19 @@ Column {
                 source: ResourceManager.icon("delete","png")
                 height: parent.height
                 width: height
-                visible: !TaskModel.showDeleted
                 type: 2
                 onClicked: {
-                    deleteDialog.taskId = id
-                    deleteDialog.taskTitle = title
-                    deleteDialog.open()
+                    if (TaskModel.showDeleted) {
+                        deleteDialog.taskId = id
+                        deleteDialog.taskTitle = title
+                        deleteDialog.open()
+                        return
+                    }
+                    TaskModel.softDeleteTask(id)
                 }
             }
+
+            Item { width: Style.smallSpacing; height: 1 }
 
             ImgButton {
                 source: ResourceManager.icon("restore","png")
