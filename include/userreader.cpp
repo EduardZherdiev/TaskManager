@@ -6,7 +6,6 @@
 using namespace DBTypes;
 
 UserReader::UserReader()
-    : m_dbProcessor{new DBProcessing{}}
 {
 }
 
@@ -33,7 +32,7 @@ std::pair<bool, std::vector<User>> UserReader::requestUserBrowse()
 {
     DBResult result;
     std::vector<DBEntry> entries;
-    std::tie(result, entries) = m_dbProcessor->requestTableData(DBTables::Users);
+    std::tie(result, entries) = DBProcessing::instance().requestTableData(DBTables::Users);
     return std::make_pair(result == DBResult::OK, transformUsers(entries));
 }
 

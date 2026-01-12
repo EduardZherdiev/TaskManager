@@ -1,6 +1,7 @@
 #include "usermodel.h"
 #include <QQmlEngine>
 #include <QDebug>
+#include <QCryptographicHash>
 #include "database/dbprocessing.h"
 #include "database/dbtypes.h"
 
@@ -90,16 +91,53 @@ void UserModel::setError(const QString& err)
     }
 }
 
+QString UserModel::hashPassword(const QString& password)
+{
+    QByteArray hash = QCryptographicHash::hash(password.toUtf8(), QCryptographicHash::Sha256);
+    return QString(hash.toHex());
+}
+
 bool UserModel::signIn(const QString& login, const QString& password)
 {
+    qDebug() << "UserModel::signIn called with login=" << login;
     setError("");
-    if (!m_dbProcessor) {
-        m_dbProcessor = new DBProcessing();
+
+    QString passwordHash = hashPassword(password);
+    qDebug() << "Password hash:" << passwordHash;
+    QVariantList args;
+    args << login << passwordHash;
+    auto res = DBProcessing::instance().requestTableDataWhere(DBTypes::DBTables::Users,
+                                                    "Login = ? AND PasswordHash = ?",
+                                                    args);
+
+    qDebug() << "Query result:" << (int)res.first << "rows found:" << res.second.size();
+    
+    if (res.first != DBTypes::DBResult::OK || res.second.empty()) {
+        setError("User not found or password is incorrect");
+        qDebug() << "Sign in failed:" << m_lastError;
+        return false;
     }
 
+    const auto &row = res.second.front();
+    if (row.size() < 3) {
+        setError("Invalid user record");
+        return false;
+    }
+
+    m_currentUserId = row[0].toInt();
+    m_currentUserLogin = login;
+    qDebug() << "Sign in successful! userId=" << m_currentUserId;
+    emit currentUserChanged();
+    return true;
+}
+
+bool UserModel::signInWithHash(const QString& login, const QString& passwordHash)
+{
+    setError("");
+
     QVariantList args;
-    args << login << password;
-    auto res = m_dbProcessor->requestTableDataWhere(DBTypes::DBTables::Users,
+    args << login << passwordHash;
+    auto res = DBProcessing::instance().requestTableDataWhere(DBTypes::DBTables::Users,
                                                     "Login = ? AND PasswordHash = ?",
                                                     args);
 
@@ -109,12 +147,12 @@ bool UserModel::signIn(const QString& login, const QString& password)
     }
 
     const auto &row = res.second.front();
-    if (row.size() < 2) {
+    if (row.size() < 3) {
         setError("Invalid user record");
         return false;
     }
 
-    m_currentUserId = row[1].toInt();
+    m_currentUserId = row[0].toInt();
     m_currentUserLogin = login;
     emit currentUserChanged();
     return true;
@@ -131,14 +169,11 @@ bool UserModel::registerUser(const QString& login, const QString& password)
         setError("Password cannot be empty");
         return false;
     }
-    if (!m_dbProcessor) {
-        m_dbProcessor = new DBProcessing();
-    }
 
     // Check if login exists
     QVariantList args;
     args << login;
-    auto check = m_dbProcessor->requestTableDataWhere(DBTypes::DBTables::Users,
+    auto check = DBProcessing::instance().requestTableDataWhere(DBTypes::DBTables::Users,
                                                       "Login = ?",
                                                       args);
     if (check.first == DBTypes::DBResult::OK && !check.second.empty()) {
@@ -146,9 +181,10 @@ bool UserModel::registerUser(const QString& login, const QString& password)
         return false;
     }
 
+    QString passwordHash = hashPassword(password);
     QVariantList data;
-    data << login << password;
-    auto add = m_dbProcessor->requestAddRow(DBTypes::DBTables::Users, data);
+    data << login << hashPassword(password);
+    auto add = DBProcessing::instance().requestAddRow(DBTypes::DBTables::Users, data);
     if (add.first != DBTypes::DBResult::OK) {
         setError("Failed to register user");
         return false;
@@ -176,16 +212,12 @@ bool UserModel::checkPassword(const QString& password)
         return false;
     }
 
-    if (!m_dbProcessor) {
-        m_dbProcessor = new DBProcessing();
-    }
-
     QVariantList args;
     args << password;
     // First get the current user's record
     QVariantList userArgs;
     userArgs << m_currentUserId;
-    auto userRes = m_dbProcessor->requestTableDataWhere(DBTypes::DBTables::Users,
+    auto userRes = DBProcessing::instance().requestTableDataWhere(DBTypes::DBTables::Users,
                                                         "Id = ?",
                                                         userArgs);
     if (userRes.first != DBTypes::DBResult::OK || userRes.second.empty()) {
@@ -199,8 +231,9 @@ bool UserModel::checkPassword(const QString& password)
         return false;
     }
 
-    QString storedPassword = userRow[3].toString();
-    if (storedPassword != password) {
+    QString storedPasswordHash = userRow[3].toString();
+    QString passwordHash = hashPassword(password);
+    if (storedPasswordHash != passwordHash) {
         setError("Current password is incorrect");
         return false;
     }
@@ -216,10 +249,6 @@ bool UserModel::updateUser(const QString& newLogin, const QString& oldPassword, 
         return false;
     }
 
-    if (!m_dbProcessor) {
-        m_dbProcessor = new DBProcessing();
-    }
-
     // If password is being changed, verify old password
     if (!newPassword.isEmpty()) {
         if (!checkPassword(oldPassword)) {
@@ -231,7 +260,7 @@ bool UserModel::updateUser(const QString& newLogin, const QString& oldPassword, 
     if (newLogin != m_currentUserLogin) {
         QVariantList checkArgs;
         checkArgs << newLogin;
-        auto check = m_dbProcessor->requestTableDataWhere(DBTypes::DBTables::Users,
+        auto check = DBProcessing::instance().requestTableDataWhere(DBTypes::DBTables::Users,
                                                           "Login = ?",
                                                           checkArgs);
         if (check.first == DBTypes::DBResult::OK && !check.second.empty()) {
@@ -254,13 +283,14 @@ bool UserModel::updateUser(const QString& newLogin, const QString& oldPassword, 
     values << newLogin;
     
     if (!newPassword.isEmpty()) {
+        QString newPasswordHash = hashPassword(newPassword);
         columns << "PasswordHash";
-        values << newPassword;
+        values << newPasswordHash;
     } else {
         // Keep old password - get it from database
         QVariantList getPasswordArgs;
         getPasswordArgs << m_currentUserId;
-        auto passRes = m_dbProcessor->requestTableDataWhere(DBTypes::DBTables::Users,
+        auto passRes = DBProcessing::instance().requestTableDataWhere(DBTypes::DBTables::Users,
                                                            "Id = ?",
                                                            getPasswordArgs);
         if (passRes.first != DBTypes::DBResult::OK || passRes.second.empty()) {
@@ -277,7 +307,7 @@ bool UserModel::updateUser(const QString& newLogin, const QString& oldPassword, 
         values << currentPassword;
     }
 
-    auto result = m_dbProcessor->requestUpdate(DBTypes::DBTables::Users, columns, values);
+    auto result = DBProcessing::instance().requestUpdate(DBTypes::DBTables::Users, columns, values);
     if (result != DBTypes::DBResult::OK) {
         setError("Failed to update user");
         return false;

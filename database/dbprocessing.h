@@ -10,8 +10,12 @@
 class DBProcessing
 {
 public:
-    DBProcessing();
-    ~DBProcessing();
+    static DBProcessing& instance();
+    
+    // Delete copy constructor and assignment operator
+    DBProcessing(const DBProcessing&) = delete;
+    DBProcessing& operator=(const DBProcessing&) = delete;
+
 #ifdef INSERT_TEST_DATA
     void insertTestData();
 #endif
@@ -27,7 +31,11 @@ public:
 
     DBTypes::DBResult requestUpdate(DBTypes::DBTables table, const QVector<QString>& headers, const QVariantList& data);
     DBTypes::DBResult requestDelete(DBTypes::DBTables table, int identity);
+
 private:
+    DBProcessing();
+    ~DBProcessing();
+    
     DBManipulator m_manipulator;
     DBSelector m_selector;
 };

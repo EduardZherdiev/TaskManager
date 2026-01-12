@@ -47,6 +47,12 @@ DBResult DBManipulator::deleteIdentity(const std::string& tableName, int identit
     return m_dbManager.execute(query).first;
 }
 
+DBResult DBManipulator::deleteAll(const std::string& tableName)
+{
+    std::string query = "DELETE FROM " + tableName;
+    return m_dbManager.execute(query).first;
+}
+
 std::string DBManipulator::generateBindString(size_t paramCount) const
 {
     std::ostringstream bindings;

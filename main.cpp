@@ -20,19 +20,19 @@ int main(int argc, char *argv[])
     QQuickStyle::setStyle("Fusion");
 
     QQmlApplicationEngine engine;
-    // Register TaskModel as singleton so all QML files use the same instance
-    qmlRegisterSingletonType<TaskModel>("core", 1, 0, "TaskModel", [](QQmlEngine *engine, QJSEngine *scriptEngine) -> QObject* {
-        Q_UNUSED(engine)
-        Q_UNUSED(scriptEngine)
-        return new TaskModel();
-    });
     
-    // Register UserModel as singleton for authentication
-    qmlRegisterSingletonType<UserModel>("core", 1, 0, "UserModel", [](QQmlEngine *engine, QJSEngine *scriptEngine) -> QObject* {
-        Q_UNUSED(engine)
-        Q_UNUSED(scriptEngine)
-        return new UserModel();
-    });
+    // Create UserModel first
+    UserModel* userModel = new UserModel();
+    
+    // Create TaskModel and set its UserModel reference
+    TaskModel* taskModel = new TaskModel();
+    taskModel->setUserModel(userModel);
+    
+    // Register TaskModel as singleton
+    qmlRegisterSingletonInstance<TaskModel>("core", 1, 0, "TaskModel", taskModel);
+    
+    // Register UserModel as singleton
+    qmlRegisterSingletonInstance<UserModel>("core", 1, 0, "UserModel", userModel);
     
     qmlRegisterType<CallbackModel>("core", 1, 0, "CallbackModel");
     engine.addImportPath(":/qml");

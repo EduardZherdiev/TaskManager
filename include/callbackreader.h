@@ -12,5 +12,4 @@ public:
     ~CallbackReader();
 
 private:
-    std::unique_ptr<DBProcessing> m_dbProcessor;
 };

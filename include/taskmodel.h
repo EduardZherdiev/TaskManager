@@ -3,14 +3,14 @@
 #include "task.h"
 #include "taskreader.h"
 
+class UserModel;
+
 class TaskModel : public QAbstractListModel
 {
     Q_OBJECT
     Q_PROPERTY(bool showDeleted READ showDeleted WRITE setShowDeleted NOTIFY showDeletedChanged)
     Q_PROPERTY(int sortField READ sortField WRITE setSortField NOTIFY sortFieldChanged)
     Q_PROPERTY(bool sortAscending READ sortAscending WRITE setSortAscending NOTIFY sortAscendingChanged)
-    Q_PROPERTY(int currentUserId READ currentUserId NOTIFY currentUserChanged)
-    Q_PROPERTY(QString currentUserLogin READ currentUserLogin NOTIFY currentUserChanged)
     Q_PROPERTY(QString lastError READ lastError NOTIFY lastErrorChanged)
 public:
     TaskModel();
@@ -29,13 +29,9 @@ public:
     bool sortAscending() const;
     void setSortAscending(bool ascending);
 
-    int currentUserId() const;
-    QString currentUserLogin() const;
     QString lastError() const;
-
-    Q_INVOKABLE bool signIn(const QString& login, const QString& password);
-    Q_INVOKABLE bool registerUser(const QString& login, const QString& password);
-    Q_INVOKABLE void signOut();
+    
+    void setUserModel(UserModel* userModel);
 
     Q_INVOKABLE bool createTask(const QString& title, const QString& description, int state);
     Q_INVOKABLE bool updateTask(int taskId, const QString& title, const QString& description, int state);
@@ -48,8 +44,10 @@ signals:
     void showDeletedChanged();
     void sortFieldChanged();
     void sortAscendingChanged();
-    void currentUserChanged();
     void lastErrorChanged();
+
+private slots:
+    void onUserChanged();
 
 private:
     std::vector<Task> m_Tasks;
@@ -57,12 +55,10 @@ private:
     bool m_showDeleted = false;
     int m_sortField = 0;  // 0=CreatedAt, 1=Title, 2=State, 3=UpdatedAt, 4=DeletedAt
     bool m_sortAscending = true;
-    int m_currentUserId = -1;
-    QString m_currentUserLogin;
     QString m_lastError;
-    class DBProcessing* m_dbProcessor = nullptr;
+    UserModel* m_userModel = nullptr;
 
-    int defaultUserId();
+    int getCurrentUserId() const;
     void sortTasks();
     void setError(const QString& err);
 
@@ -79,4 +75,3 @@ private:
 
     bool updateTask();
 };
-

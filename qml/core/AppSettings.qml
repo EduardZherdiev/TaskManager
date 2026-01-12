@@ -13,7 +13,7 @@ QtObject {
         property alias storageMode: root.storageMode
         property alias rememberLogin: root.rememberLogin
         property alias savedLogin: root.savedLogin
-        property alias savedPassword: root.savedPassword
+        property alias savedPasswordHash: root.savedPasswordHash
     }
 
     // Theme: true = dark, false = light
@@ -28,10 +28,10 @@ QtObject {
     // Remember login
     property bool rememberLogin: false
     property string savedLogin: ""
-    property string savedPassword: ""
+    property string savedPasswordHash: ""
 
     // Apply theme on startup
     Component.onCompleted: {
-        console.log("AppSettings loaded: theme=" + isDarkTheme + ", lang=" + language + ", storage=" + storageMode)
+        console.log("AppSettings loaded: theme=" + isDarkTheme + ", lang=" + language + ", rememberLogin=" + rememberLogin + ", storage=" + storageMode)
     }
 }

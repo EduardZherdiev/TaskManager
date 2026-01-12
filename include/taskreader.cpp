@@ -8,7 +8,6 @@
 using namespace DBTypes;
 
 TaskReader::TaskReader()
-    : m_dbProcessor {new DBProcessing{}}
 {
 }
 
@@ -95,9 +94,8 @@ std::pair<bool, std::vector<Task>> TaskReader::requestTaskBrowse(bool showDelete
         where += "DeletedAt IS NULL";
     }
 
-    std::tie(result, entries) = m_dbProcessor->requestTableDataWhere(DBTables::Tasks, where, args);
+    std::tie(result, entries) = DBProcessing::instance().requestTableDataWhere(DBTables::Tasks, where, args);
     
-    qDebug() << "TaskReader::requestTaskBrowse showDeleted=" << showDeleted << " userId=" << userId << " result=" << static_cast<int>(result) << " entries=" << entries.size();
     return std::make_pair(result == DBResult::OK,
                           transform(entries));
 }

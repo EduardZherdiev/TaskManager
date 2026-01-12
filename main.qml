@@ -22,19 +22,20 @@ ApplicationWindow {
         Style.isDarkTheme = AppSettings.isDarkTheme
         
         // Try auto-login if remember is enabled and credentials are saved
-        if (AppSettings.rememberLogin && AppSettings.savedLogin !== "" && AppSettings.savedPassword !== "") {
-            if (UserModel.signIn(AppSettings.savedLogin, AppSettings.savedPassword)) {
-                console.log("Auto-login successful for:", AppSettings.savedLogin)
+        if (AppSettings.rememberLogin && AppSettings.savedLogin !== "" && AppSettings.savedPasswordHash !== "") {
+            // Use signInWithHash for auto-login since we already have the hash
+            if (UserModel.signInWithHash(AppSettings.savedLogin, AppSettings.savedPasswordHash)) {
+                // TaskModel will automatically update when UserModel.currentUserChanged signal is emitted
                 return
             } else {
                 console.log("Auto-login failed, clearing saved credentials")
                 AppSettings.savedLogin = ""
-                AppSettings.savedPassword = ""
+                AppSettings.savedPasswordHash = ""
             }
         }
         
         if (UserModel.currentUserId < 0)
-            signInDialog.open()
+            header.openSignInDialog()
     }
 
     Rectangle {
@@ -44,25 +45,14 @@ ApplicationWindow {
         color: Style.backgroundColor
     }
 
-    header: Header{}
+    header: Header{
+        id: headerComponent
+    }
 
     Body{}
 
-    UserSignInDialog {
-        id: signInDialog
-        onSignInRequested: function(login, password) {
-            if (!UserModel.signIn(login, password)) {
-                showError(UserModel.lastError)
-                return
-            }
-            close()
-        }
-        onRequestRegister: {
-            close()
-            registrationDialog.open()
-        }
-    }
-
+    // UserSignInDialog is now handled in Header component
+    
     UserRegistrationDialog {
         id: registrationDialog
         onRegistrationRequested: function(login, password) {
@@ -74,7 +64,7 @@ ApplicationWindow {
         }
         onRequestSignIn: {
             close()
-            signInDialog.open()
+            headerComponent.openSignInDialog()
         }
     }
 

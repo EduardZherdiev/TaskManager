@@ -115,6 +115,7 @@ Dialog {
                 text: qsTr("Sign In")
                 type: 2
                 onClicked: {
+                    console.log("Sign In button clicked")
                     errorLabel.visible = false
 
                     if (loginField.text.trim() === "") {
@@ -129,6 +130,7 @@ Dialog {
                         return
                     }
 
+                    console.log("Emitting signInRequested signal with login=" + loginField.text.trim())
                     dialog.signInRequested(loginField.text.trim(), passwordField.text)
                 }
             }

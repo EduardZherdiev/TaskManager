@@ -16,5 +16,4 @@ public:
     ~TaskReader();
 
 private:
-    std::unique_ptr<DBProcessing> m_dbProcessor;
 };

@@ -123,10 +123,13 @@ Rectangle {
                     userEditDialog.open()
                 }
                 onSignOutRequested: {
+                    // Call signOut on UserModel - TaskModel will automatically update
+                    UserModel.signOut()
+                    
                     // Clear saved credentials if not remembering
                     if (!AppSettings.rememberLogin) {
                         AppSettings.savedLogin = ""
-                        AppSettings.savedPassword = ""
+                        AppSettings.savedPasswordHash = ""
                     }
                     // After sign out, open sign-in dialog
                     signInDialog.open()
@@ -151,13 +154,15 @@ Rectangle {
                     if (AppSettings.rememberLogin) {
                         AppSettings.savedLogin = newLogin
                         if (newPassword !== "") {
-                            AppSettings.savedPassword = newPassword
+                            AppSettings.savedPasswordHash = UserModel.hashPassword(newPassword)
                         }
                     }
                     
                     userEditDialog.close()
                 }
                 onSignOutRequested: {
+                    // Call signOut on UserModel
+                    UserModel.signOut()
                     // After sign out, open sign-in dialog
                     signInDialog.open()
                 }
@@ -166,18 +171,23 @@ Rectangle {
             UserSignInDialog {
                 id: signInDialog
                 onSignInRequested: function(login, password) {
+                    console.log("=== Header.onSignInRequested handler called ===")
+                    console.log("Sign in requested: login=" + login)
                     if (!UserModel.signIn(login, password)) {
+                        console.log("Sign in failed: " + UserModel.lastError)
                         showError(UserModel.lastError)
                         return
                     }
                     
+                    // TaskModel will automatically update when UserModel.currentUserChanged signal is emitted
+                    
                     // Save credentials if remember is enabled
                     if (AppSettings.rememberLogin) {
                         AppSettings.savedLogin = login
-                        AppSettings.savedPassword = password
+                        AppSettings.savedPasswordHash = UserModel.hashPassword(password)
                     } else {
                         AppSettings.savedLogin = ""
-                        AppSettings.savedPassword = ""
+                        AppSettings.savedPasswordHash = ""
                     }
                     
                     close()
@@ -195,10 +205,12 @@ Rectangle {
                         return
                     }
                     
+                    // TaskModel will automatically update when UserModel.currentUserChanged signal is emitted
+                    
                     // Save credentials if remember is enabled
                     if (AppSettings.rememberLogin) {
                         AppSettings.savedLogin = login
-                        AppSettings.savedPassword = password
+                        AppSettings.savedPasswordHash = UserModel.hashPassword(password)
                     }
                     
                     close()
@@ -236,5 +248,9 @@ Rectangle {
                 onClicked: addTaskDialog.openForTask(-1, "", "", 0, "", "", "")
             }
         }
+    }
+
+    function openSignInDialog() {
+        signInDialog.open()
     }
 }

@@ -1,6 +1,7 @@
 #include "dbprocessing.h"
 #include "dbmanipulator.h"
 #include <QDateTime>
+#include <QCryptographicHash>
 
 DBProcessing::DBProcessing()
 {
@@ -11,6 +12,12 @@ DBProcessing::DBProcessing()
 
 DBProcessing::~DBProcessing()
 {
+}
+
+DBProcessing& DBProcessing::instance()
+{
+    static DBProcessing s_instance;
+    return s_instance;
 }
 
 static const std::map<DBTypes::DBTables, std::string> tableMapper {
@@ -30,14 +37,26 @@ void DBProcessing::insertTestData()
 {
     DBManipulator dbManager;
 
-    // Create users
+    // Clear existing test data
+    dbManager.deleteAll("Tasks");
+    dbManager.deleteAll("Callbacks");
+    dbManager.deleteAll("Users");
+
+    // Helper function to hash passwords
+    auto hashPassword = [](const QString& password) -> QString {
+        QByteArray hash = QCryptographicHash::hash(password.toUtf8(), QCryptographicHash::Sha256);
+        return QString(hash.toHex());
+    };
+
+    // Create users with hashed passwords
+    // Passwords: alice = "alice", bob = "bob", carol = "carol"
     int aliceId = 0;
     int bobId = 0;
     int carolId = 0;
 
-    aliceId = dbManager.insertRow("Users", {{"alice"}, {"hash_alice"}}).second;
-    bobId = dbManager.insertRow("Users", {{"bob"}, {"hash_bob"}}).second;
-    carolId = dbManager.insertRow("Users", {{"carol"}, {"hash_carol"}}).second;
+    aliceId = dbManager.insertRow("Users", {{"alice"}, {hashPassword("alice")}}).second;
+    bobId = dbManager.insertRow("Users", {{"bob"}, {hashPassword("bob")}}).second;
+    carolId = dbManager.insertRow("Users", {{"carol"}, {hashPassword("carol")}}).second;
 
     // Create tasks for users
     auto insertTask = [&](int userId, const QString& title, const QString& desc, int state, const QDateTime& createdAt, const QDateTime& updatedAt) {
@@ -48,6 +67,16 @@ void DBProcessing::insertTestData()
     insertTask(bobId, "Finish report", "Monthly sales report", 0, QDateTime::currentDateTime().addDays(-2), QDateTime::currentDateTime());
     insertTask(carolId, "Plan trip", "Book flights and hotels", 1, QDateTime::currentDateTime().addDays(-10), QDateTime::currentDateTime().addDays(-1));
 
+    // Add 200 tasks for bob
+    for (int i = 1; i <= 200; ++i) {
+        QString title = QString("Task %1 for Bob").arg(i);
+        QString description = QString("Description for task %1. This is a sample task with some content.").arg(i);
+        int state = i % 3;  // 0=Active, 1=Completed, 2=Archived
+        QDateTime created = QDateTime::currentDateTime().addDays(-(200 - i));
+        QDateTime updated = (state == 1) ? QDateTime::currentDateTime().addDays(-(200 - i) + 1) : QDateTime();
+        insertTask(bobId, title, description, state, created, updated);
+    }
+
     // Create callbacks
     auto insertCallback = [&](int userId, int rate, const QString& desc, const QDateTime& createdAt) {
         return dbManager.insertRow("Callbacks", {QVariant(userId), QVariant(rate), QVariant(desc), QVariant(createdAt.toString(Qt::ISODate))}).second;
@@ -56,7 +85,7 @@ void DBProcessing::insertTestData()
     insertCallback(aliceId, 5, "Great service", QDateTime::currentDateTime());
     insertCallback(bobId, 4, "Good support", QDateTime::currentDateTime().addDays(-3));
     insertCallback(carolId, 3, "Average experience", QDateTime::currentDateTime().addDays(-7));
-    
+
     qDebug() << "Test data inserted successfully";
 }
 #endif

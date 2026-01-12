@@ -19,6 +19,7 @@ public:
 
     DBTypes::DBResult updateValue(const std::string& tableName, const QVector<QString>& columns, const QVariantList& values);
     DBTypes::DBResult deleteIdentity(const std::string& tableName, int identity);
+    DBTypes::DBResult deleteAll(const std::string& tableName);
 private:
     DBManager& m_dbManager;
     std::string generateBindString(size_t paramCount) const;

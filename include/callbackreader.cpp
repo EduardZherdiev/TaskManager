@@ -7,7 +7,6 @@
 using namespace DBTypes;
 
 CallbackReader::CallbackReader()
-    : m_dbProcessor{new DBProcessing{}}
 {
 }
 
@@ -35,7 +34,7 @@ std::pair<bool, std::vector<Callback>> CallbackReader::requestCallbackBrowse()
 {
     DBResult result;
     std::vector<DBEntry> entries;
-    std::tie(result, entries) = m_dbProcessor->requestTableData(DBTables::Callbacks);
+    std::tie(result, entries) = DBProcessing::instance().requestTableData(DBTables::Callbacks);
     return std::make_pair(result == DBResult::OK, transformCallbacks(entries));
 }
 
