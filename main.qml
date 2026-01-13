@@ -7,6 +7,7 @@ import include
 import components
 import core
 import dialogs 1.0
+import pages
 
 ApplicationWindow {
 

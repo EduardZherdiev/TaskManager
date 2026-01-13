@@ -147,16 +147,22 @@ Dialog {
                 type: 1
                 onClicked: {
                     UserModel.signOut()
-                    TaskModel.signOut()
                     dialog.close()
                     dialog.signOutRequested()
                 }
+            }
+
+            FeedbackDialog {
+                id: feedbackDialog
             }
 
             Button {
                 text: qsTr("Feedback")
                 width: parent.width
                 type: 1
+                onClicked: {
+                    feedbackDialog.open()
+                }
             }
 
             Button {

@@ -30,6 +30,14 @@ Dialog {
         anchors.fill: parent
         spacing: Style.mediumSpacing
 
+        Icon {
+            Layout.alignment: Qt.AlignHCenter
+            width: 64
+            height: 64
+            source: ResourceManager.icon("user", "png")
+            canChange: false
+        }
+
         Label {
             Layout.fillWidth: true
             text: qsTr("Edit Profile")

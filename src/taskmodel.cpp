@@ -1,5 +1,5 @@
-#include "taskmodel.h"
-#include "usermodel.h"
+#include "include/taskmodel.h"
+#include "include/usermodel.h"
 #include <QQmlEngine>
 #include <QDebug>
 #include <QDateTime>
@@ -31,13 +31,16 @@ void TaskModel::setSortField(int field)
     if (m_sortField == field)
         return;
     
+    qDebug() << "Changing sort field from" << m_sortField << "to" << field;
     m_sortField = field;
     emit sortFieldChanged();
     
     // Trigger view update
+    qDebug() << "Triggering view update after sort field change";
     beginResetModel();
     sortTasks();
     endResetModel();
+    qDebug() << "View update completed";
 }
 
 bool TaskModel::sortAscending() const
@@ -50,13 +53,16 @@ void TaskModel::setSortAscending(bool ascending)
     if (m_sortAscending == ascending)
         return;
     
+    qDebug() << "Changing sort order to" << (ascending ? "ascending" : "descending");
     m_sortAscending = ascending;
     emit sortAscendingChanged();
     
     // Trigger view update
+    qDebug() << "Triggering view update after sort order change";
     beginResetModel();
     sortTasks();
     endResetModel();
+    qDebug() << "View update completed";
 }
 
 QString TaskModel::lastError() const
@@ -158,14 +164,34 @@ bool TaskModel::updateTask()
         return true;
     }
 
+    qDebug() << "Loading tasks from database...";
     bool requestResult {false};
     std::vector<Task> TaskResult;
     std::tie(requestResult, TaskResult) = m_reader.requestTaskBrowse(m_showDeleted, userId);
+    qDebug() << "Tasks loaded, count:" << TaskResult.size();
+    
+    // Apply month filter if set
+    if (m_filterMonth >= 0 && m_filterYear >= 0) {
+        TaskResult.erase(
+            std::remove_if(TaskResult.begin(), TaskResult.end(), 
+                [this](const Task& task) {
+                    QDate date = task.createdAt().date();
+                    return date.month() - 1 != m_filterMonth || date.year() != m_filterYear;
+                }),
+            TaskResult.end()
+        );
+        qDebug() << "Tasks after month filter:" << TaskResult.size();
+    }
+    
     if (requestResult) {
+        qDebug() << "Starting model update...";
         beginResetModel();
         m_Tasks.swap(TaskResult);
+        qDebug() << "Starting sort...";
         sortTasks();
+        qDebug() << "Sort completed";
         endResetModel();
+        qDebug() << "Model update completed";
     } else {
         qWarning() << "TaskModel::updateTask failed to load tasks";
     }
@@ -177,44 +203,86 @@ void TaskModel::sortTasks()
 {
     if (m_Tasks.empty())
         return;
-    qDebug() << "Sorting tasks by field" << m_sortField << (m_sortAscending ? "ascending" : "descending");
-    try{
+
     std::sort(m_Tasks.begin(), m_Tasks.end(), [this](const Task& a, const Task& b) {
-        bool result = false;
+        int comparison = 0;
         
         switch (m_sortField) {
         case 0: // CreatedAt
-            result = a.createdAt() < b.createdAt();
+        {
+            bool aValid = a.createdAt().isValid();
+            bool bValid = b.createdAt().isValid();
+            if (!aValid && !bValid)
+                comparison = 0; // Both invalid, equal
+            else if (!aValid)
+                comparison = -1; // Invalid comes after valid (always at end)
+            else if (!bValid)
+                comparison = 1; // Valid comes before invalid
+            else if (a.createdAt() < b.createdAt())
+                comparison = -1;
+            else if (a.createdAt() > b.createdAt())
+                comparison = 1;
+        }
             break;
         case 1: // Title
-            result = a.title().toLower() < b.title().toLower();
+            comparison = QString::compare(a.title(), b.title(), Qt::CaseInsensitive);
             break;
         case 2: // State
-            result = static_cast<int>(a.taskState()) < static_cast<int>(b.taskState());
+            {
+                int stateA = static_cast<int>(a.taskState());
+                int stateB = static_cast<int>(b.taskState());
+                if (stateA < stateB)
+                    comparison = -1;
+                else if (stateA > stateB)
+                    comparison = 1;
+            }
             break;
         case 3: // UpdatedAt
-            result = a.updatedAt() < b.updatedAt();
+            {
+                bool aValid = a.updatedAt().isValid();
+                bool bValid = b.updatedAt().isValid();
+                if (!aValid && !bValid)
+                    comparison = 0; // Both invalid, equal
+                else if (!aValid)
+                    comparison = -1; // Invalid comes after valid (always at end)
+                else if (!bValid)
+                    comparison = 1; // Valid comes before invalid
+                else if (a.updatedAt() < b.updatedAt())
+                    comparison = -1;
+                else if (a.updatedAt() > b.updatedAt())
+                    comparison = 1;
+            }
             break;
         case 4: // DeletedAt
-            if (!a.deletedAt().isValid() && b.deletedAt().isValid())
-                result = false;
-            else if (a.deletedAt().isValid() && !b.deletedAt().isValid())
-                result = true;
-            else if (a.deletedAt().isValid() && b.deletedAt().isValid())
-                result = a.deletedAt() < b.deletedAt();
-            else
-                result = false;
+            {
+                bool aValid = a.deletedAt().isValid();
+                bool bValid = b.deletedAt().isValid();
+                if (!aValid && !bValid)
+                    comparison = 0;
+                else if (!aValid)
+                    comparison = 1; // Invalid comes after valid (always at end)
+                else if (!bValid)
+                    comparison = -1; // Valid comes before invalid
+                else if (a.deletedAt() < b.deletedAt())
+                    comparison = -1;
+                else if (a.deletedAt() > b.deletedAt())
+                    comparison = 1;
+            }
             break;
         default:
-            result = a.createdAt() < b.createdAt();
+            if (a.createdAt() < b.createdAt())
+                comparison = -1;
+            else if (a.createdAt() > b.createdAt())
+                comparison = 1;
         }
         
-        return m_sortAscending ? result : !result;
+        // Apply sort direction
+        // Invalid items stay at end (handled above with positive comparison)
+        if (m_sortAscending)
+            return comparison > 0;
+        else
+            return comparison < 0;
     });
-    }
-    catch(const std::exception& e){
-        qWarning() << "Exception during sorting tasks:" << e.what();
-    }
 }
 
 bool TaskModel::createTask(const QString& title, const QString& description, int state)
@@ -390,6 +458,29 @@ bool TaskModel::restoreTask(int taskId)
 void TaskModel::reloadTasks()
 {
     qDebug() << "Reloading tasks from database";
+    updateTask();
+}
+
+int TaskModel::filterMonth() const
+{
+    return m_filterMonth;
+}
+
+int TaskModel::filterYear() const
+{
+    return m_filterYear;
+}
+
+void TaskModel::setFilterMonth(int month, int year)
+{
+    if (m_filterMonth == month && m_filterYear == year)
+        return;
+    
+    m_filterMonth = month;
+    m_filterYear = year;
+    emit filterMonthChanged();
+    emit filterYearChanged();
+    
     updateTask();
 }
 

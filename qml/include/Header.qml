@@ -23,6 +23,39 @@ Rectangle {
         anchors.centerIn: parent
         spacing: Style.bigSpacing
 
+        // ===== MONTH FILTER =====
+        Column {
+            spacing: Style.smallSpacing
+            anchors.bottom: parent.bottom
+
+            Label {
+                leftPadding: 7
+                text: qsTr("Filter by month")
+                color: Style.textColor
+            }
+
+            ComboBox {
+                id: monthFilter
+                model: [
+                    "January", "February", "March", "April", "May", "June",
+                    "July", "August", "September", "October", "November", "December"
+                ]
+                currentIndex: new Date().getMonth()
+                onActivated: function(index) {
+                    var today = new Date()
+                    var selectedMonth = index
+                    var selectedYear = today.getFullYear()
+                    
+                    // If selected month is in the future, it's from previous year
+                    if (selectedMonth > today.getMonth()) {
+                        selectedYear = today.getFullYear() - 1
+                    }
+                    
+                    TaskModel.setFilterMonth(selectedMonth, selectedYear)
+                }
+            }
+        }
+
         // ===== SORTING =====
         Column {
             spacing: Style.smallSpacing

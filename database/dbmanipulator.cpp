@@ -7,7 +7,7 @@ namespace {
 static const std::map<std::string, std::string> tablesMapping = {
     {"Users", "Login, PasswordHash"},
     {"Tasks", "UserId, Title, Description, State, CreatedAt, UpdatedAt, DeletedAt"},
-    {"Callbacks", "UserId, Rate, Description, CreatedAt"}
+    {"Feedbacks", "UserId, Rate, Description, CreatedAt"}
 };
 }
 

@@ -127,7 +127,7 @@ bool DBConnectionManager::setUpTables()
         )",
 
         R"(
-        CREATE TABLE IF NOT EXISTS Callbacks (
+        CREATE TABLE IF NOT EXISTS Feedbacks (
             Id INTEGER PRIMARY KEY AUTOINCREMENT,
             UserId INTEGER NOT NULL,
             Rate INTEGER NOT NULL CHECK (Rate BETWEEN 1 AND 5),
@@ -155,7 +155,7 @@ bool DBConnectionManager::setUpTables()
         "CREATE INDEX IF NOT EXISTS idx_tasks_user_id ON Tasks(UserId);",
         "CREATE INDEX IF NOT EXISTS idx_tasks_state ON Tasks(State);",
         "CREATE INDEX IF NOT EXISTS idx_tasks_created_at ON Tasks(CreatedAt);",
-        "CREATE INDEX IF NOT EXISTS idx_callbacks_user_id ON Callbacks(UserId);"
+        "CREATE INDEX IF NOT EXISTS idx_Feedbacks_user_id ON Feedbacks(UserId);"
     };
 
     for (const auto& sql : indexQueries)

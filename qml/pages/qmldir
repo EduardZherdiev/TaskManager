@@ -1,0 +1,3 @@
+module pages
+TasksPage 1.0 TasksPage.qml
+ChartsPage 1.0 ChartsPage.qml

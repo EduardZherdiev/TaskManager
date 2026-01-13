@@ -7,6 +7,7 @@ TabButton {
 
     implicitHeight: 32
     implicitWidth: 100
+    padding: 0
 
     background: Rectangle {
         radius: Style.mediumRadius

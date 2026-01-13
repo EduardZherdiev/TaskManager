@@ -12,7 +12,7 @@ enum class DBResult {
 enum class DBTables {
     Users = 1,
     Tasks ,
-    Callbacks
+    Feedbacks
 };
 
 enum class DBState {

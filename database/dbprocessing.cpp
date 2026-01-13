@@ -23,13 +23,13 @@ DBProcessing& DBProcessing::instance()
 static const std::map<DBTypes::DBTables, std::string> tableMapper {
     {DBTypes::DBTables::Users, "Users"},
     {DBTypes::DBTables::Tasks, "Tasks"},
-    {DBTypes::DBTables::Callbacks, "Callbacks"}
+    {DBTypes::DBTables::Feedbacks, "Feedbacks"}
 };
 
 static const std::map<DBTypes::DBTables, std::string> selectionMapper {
     {DBTypes::DBTables::Users, "Users"},
     {DBTypes::DBTables::Tasks, "Tasks"},
-    {DBTypes::DBTables::Callbacks, "Callbacks"}
+    {DBTypes::DBTables::Feedbacks, "Feedbacks"}
 };
 
 #ifdef INSERT_TEST_DATA
@@ -39,7 +39,7 @@ void DBProcessing::insertTestData()
 
     // Clear existing test data
     dbManager.deleteAll("Tasks");
-    dbManager.deleteAll("Callbacks");
+    dbManager.deleteAll("Feedbacks");
     dbManager.deleteAll("Users");
 
     // Helper function to hash passwords
@@ -77,14 +77,14 @@ void DBProcessing::insertTestData()
         insertTask(bobId, title, description, state, created, updated);
     }
 
-    // Create callbacks
-    auto insertCallback = [&](int userId, int rate, const QString& desc, const QDateTime& createdAt) {
-        return dbManager.insertRow("Callbacks", {QVariant(userId), QVariant(rate), QVariant(desc), QVariant(createdAt.toString(Qt::ISODate))}).second;
+    // Create Feedbacks
+    auto insertFeedback = [&](int userId, int rate, const QString& desc, const QDateTime& createdAt) {
+        return dbManager.insertRow("Feedbacks", {QVariant(userId), QVariant(rate), QVariant(desc), QVariant(createdAt.toString(Qt::ISODate))}).second;
     };
 
-    insertCallback(aliceId, 5, "Great service", QDateTime::currentDateTime());
-    insertCallback(bobId, 4, "Good support", QDateTime::currentDateTime().addDays(-3));
-    insertCallback(carolId, 3, "Average experience", QDateTime::currentDateTime().addDays(-7));
+    insertFeedback(aliceId, 5, "Great service", QDateTime::currentDateTime());
+    insertFeedback(bobId, 4, "Good support", QDateTime::currentDateTime().addDays(-3));
+    insertFeedback(carolId, 3, "Average experience", QDateTime::currentDateTime().addDays(-7));
 
     qDebug() << "Test data inserted successfully";
 }

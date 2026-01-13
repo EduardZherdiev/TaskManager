@@ -1,23 +1,55 @@
 import QtQuick.Controls
 import QtQuick 2.11
-import components
+import StyleModule 1.0
+import QtQuick.Layouts
 
-ToolBar {
-    id: toolBar
-    height: 50
+TabBar {
+    id: tabBar
+    height: 40
 
-    Row {
-        height: 50
-        width: root.width
+    background: Rectangle {
+        color: Style.surfaceColor
+    }
 
-        SmallText {
-            text: qsTr("Title")
+    padding: 0
+    spacing: 0
+
+    TabButton {
+        text: qsTr("Tasks Table")
+        Layout.fillWidth: true
+        height: tabBar.height
+        
+        background: Rectangle {
+            color: parent.hovered ? Style.componentHover : Style.surfaceColor
         }
-        SmallText {
-            text: qsTr("Title")
+        
+        contentItem: Text {
+            text: parent.text
+            font.pixelSize: Style.mediumFont
+            color: Style.textColor
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+            anchors.centerIn: parent
         }
-        SmallText {
-            text: qsTr("Title")
+    }
+
+    TabButton {
+        text: qsTr("Progress Charts")
+        Layout.fillWidth: true
+        height: tabBar.height
+        
+        background: Rectangle {
+            color:parent.hovered ? Style.componentHover : Style.surfaceColor
+        }
+        
+        contentItem: Text {
+            text: parent.text
+            font.pixelSize: Style.mediumFont
+            color: Style.textColor
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+            anchors.centerIn: parent
         }
     }
 }
+

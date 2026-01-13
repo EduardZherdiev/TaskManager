@@ -13,14 +13,14 @@ SOURCES += \
         database/dbmanipulator.cpp \
         database/dbprocessing.cpp \
         database/dbselector.cpp \
-        include/callbackmodel.cpp \
-        include/callbackreader.cpp \
-        include/taskmodel.cpp \
-        include/taskreader.cpp \
-        include/usermodel.cpp \
-        include/userreader.cpp \
+        src/feedbackmodel.cpp \
+        src/feedbackreader.cpp \
+        src/taskmodel.cpp \
+        src/taskreader.cpp \
+        src/usermodel.cpp \
+        src/userreader.cpp \
         main.cpp \
-        src/callback.cpp \
+        src/feedback.cpp \
         src/task.cpp \
         src/user.cpp
 
@@ -33,9 +33,9 @@ HEADERS += \
     database/dbselector.h \
     database/dbtypes.h \
     database/dbmanager.h \
-    include/callback.h \
-    include/callbackmodel.h \
-    include/callbackreader.h \
+    include/feedback.h \
+    include/feedbackmodel.h \
+    include/feedbackreader.h \
     include/task.h \
     include/taskmodel.h \
     include/taskreader.h \

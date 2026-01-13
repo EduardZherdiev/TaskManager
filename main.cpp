@@ -2,7 +2,7 @@
 #include <QQmlApplicationEngine>
 #include <QtQuickControls2/QQuickStyle>
 #include "include/taskmodel.h"
-#include "include/callbackmodel.h"
+#include "include/Feedbackmodel.h"
 #include "include/usermodel.h"
 
 int main(int argc, char *argv[])
@@ -28,13 +28,18 @@ int main(int argc, char *argv[])
     TaskModel* taskModel = new TaskModel();
     taskModel->setUserModel(userModel);
     
+    // Create FeedbackModel and set its UserModel reference
+    FeedbackModel* feedbackModel = new FeedbackModel();
+    feedbackModel->setUserModel(userModel);
+    
     // Register TaskModel as singleton
     qmlRegisterSingletonInstance<TaskModel>("core", 1, 0, "TaskModel", taskModel);
     
     // Register UserModel as singleton
     qmlRegisterSingletonInstance<UserModel>("core", 1, 0, "UserModel", userModel);
     
-    qmlRegisterType<CallbackModel>("core", 1, 0, "CallbackModel");
+    // Register FeedbackModel as singleton
+    qmlRegisterSingletonInstance<FeedbackModel>("core", 1, 0, "FeedbackModel", feedbackModel);
     engine.addImportPath(":/qml");
     const QUrl url(QStringLiteral("qrc:/main.qml"));
     QObject::connect(

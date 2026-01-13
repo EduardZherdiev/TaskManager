@@ -3,10 +3,10 @@
 #include <QDateTime>
 #include "database/dbtypes.h"
 
-class Callback {
+class Feedback {
 public:
-    Callback() = default;
-    Callback(int rate, QString description, QDateTime createdAt, DBTypes::DBIndex id);
+    Feedback() = default;
+    Feedback(int rate, QString description, QDateTime createdAt, DBTypes::DBIndex id);
 
     DBTypes::DBIndex id() const;
     int rate() const;

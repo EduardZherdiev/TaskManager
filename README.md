@@ -1,6 +1,6 @@
 # TaskManager (Qt/qmake)
 
-Minimal Qt Quick app with QML UI and C++ models (Tasks/Users/Callbacks) backed by SQLite.
+Minimal Qt Quick app with QML UI and C++ models (Tasks/Users/Feedbacks) backed by SQLite.
 
 ## Build (Qt 6, qmake + MinGW on Windows)
 1. Open Qt command prompt.

@@ -35,20 +35,15 @@
         <file>qml/components/AppRadioButton.qml</file>
         <file>database/dbmanager.h</file>
         <file>database/dbtypes.h</file>
-        <file>include/callback.h</file>
-        <file>include/callbackmodel.cpp</file>
-        <file>include/callbackmodel.h</file>
-        <file>include/callbackreader.cpp</file>
-        <file>include/callbackreader.h</file>
+        <file>include/feedback.h</file>
+        <file>include/feedbackmodel.cpp</file>
+        <file>include/feedbackmodel.h</file>
+        <file>include/feedbackreader.h</file>
         <file>include/task.h</file>
-        <file>include/taskmodel.cpp</file>
         <file>include/taskmodel.h</file>
-        <file>include/taskreader.cpp</file>
         <file>include/taskreader.h</file>
         <file>include/user.h</file>
-        <file>include/usermodel.cpp</file>
         <file>include/usermodel.h</file>
-        <file>include/userreader.cpp</file>
         <file>include/userreader.h</file>
         <file>qml/dialogs/DeleteDialog.qml</file>
         <file>qml/dialogs/TaskDialog.qml</file>
@@ -61,5 +56,9 @@
         <file>qml/dialogs/UserRegistrationDialog.qml</file>
         <file>qml/dialogs/UserSignInDialog.qml</file>
         <file>qml/components/AppCheckBox.qml</file>
+        <file>qml/dialogs/FeedbackDialog.qml</file>
+        <file>qml/pages/qmldir</file>
+        <file>qml/pages/TasksPage.qml</file>
+        <file>qml/pages/ChartsPage.qml</file>
     </qresource>
 </RCC>
