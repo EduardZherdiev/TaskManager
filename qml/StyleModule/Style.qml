@@ -44,6 +44,10 @@ QtObject {
     readonly property color errorHover: isDarkTheme ? "#d62929" : "#CF6679"
     readonly property color errorPressed: isDarkTheme ? "#e62727" : "#D32F2F"
 
+    /* ====== TASK STATUS COLORS ====== */
+    readonly property color statusCompleted: "#4CAF50"
+    readonly property color statusInProgress: "#FFC107"
+    readonly property color statusArchived: "#F44336"
 
     /* ====== INPUT / CONTROL ====== */
     readonly property color controlBackground: surfaceColor

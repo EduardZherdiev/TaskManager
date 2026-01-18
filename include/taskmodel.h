@@ -14,6 +14,9 @@ class TaskModel : public QAbstractListModel
     Q_PROPERTY(QString lastError READ lastError NOTIFY lastErrorChanged)
     Q_PROPERTY(int filterMonth READ filterMonth NOTIFY filterMonthChanged)
     Q_PROPERTY(int filterYear READ filterYear NOTIFY filterYearChanged)
+    Q_PROPERTY(int archivedCount READ archivedCount NOTIFY statsChanged)
+    Q_PROPERTY(int inProgressCount READ inProgressCount NOTIFY statsChanged)
+    Q_PROPERTY(int completedCount READ completedCount NOTIFY statsChanged)
 public:
     TaskModel();
     static void registerMe(const std::string& moduleName);
@@ -36,6 +39,10 @@ public:
     int filterMonth() const;
     int filterYear() const;
     
+    int archivedCount() const;
+    int inProgressCount() const;
+    int completedCount() const;
+    
     void setUserModel(UserModel* userModel);
 
     Q_INVOKABLE bool createTask(const QString& title, const QString& description, int state);
@@ -49,6 +56,7 @@ public:
 signals:
     void showDeletedChanged();
     void sortFieldChanged();
+    void statsChanged();
     void sortAscendingChanged();
     void lastErrorChanged();
     void filterMonthChanged();
@@ -64,9 +72,13 @@ private:
     int m_sortField = 0;  // 0=CreatedAt, 1=Title, 2=State, 3=UpdatedAt, 4=DeletedAt
     bool m_sortAscending = true;
     int m_filterMonth = -1;  // -1 means no filter
+    int m_archivedCount = 0;
+    int m_inProgressCount = 0;
+    int m_completedCount = 0;
     int m_filterYear = -1;
     QString m_lastError;
     UserModel* m_userModel = nullptr;
+    void updateStats();
 
     int getCurrentUserId() const;
     void sortTasks();

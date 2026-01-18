@@ -192,6 +192,9 @@ bool TaskModel::updateTask()
         qDebug() << "Sort completed";
         endResetModel();
         qDebug() << "Model update completed";
+        
+        // Update statistics
+        updateStats();
     } else {
         qWarning() << "TaskModel::updateTask failed to load tasks";
     }
@@ -482,6 +485,59 @@ void TaskModel::setFilterMonth(int month, int year)
     emit filterYearChanged();
     
     updateTask();
+}
+
+int TaskModel::archivedCount() const
+{
+    return m_archivedCount;
+}
+
+int TaskModel::inProgressCount() const
+{
+    return m_inProgressCount;
+}
+
+int TaskModel::completedCount() const
+{
+    return m_completedCount;
+}
+
+void TaskModel::updateStats()
+{
+    int userId = getCurrentUserId();
+    if (userId < 0) {
+        m_archivedCount = 0;
+        m_inProgressCount = 0;
+        m_completedCount = 0;
+        emit statsChanged();
+        return;
+    }
+
+    // Count tasks by status
+    m_archivedCount = 0;
+    m_inProgressCount = 0;
+    m_completedCount = 0;
+    
+    qDebug() << "TaskModel::updateStats() - total tasks:" << m_Tasks.size();
+    
+    for (const auto& task : m_Tasks) {
+        int state = static_cast<int>(task.taskState());
+        switch (state) {
+            case 0:
+                m_inProgressCount++;
+                break;
+            case 1:
+                m_completedCount++;
+                break;
+            case 2:
+                m_archivedCount++;
+                break;
+        }
+    }
+    
+    qDebug() << "Stats: notStarted:" << m_archivedCount << "inProgress:" << m_inProgressCount << "completed:" << m_completedCount;
+    
+    emit statsChanged();
 }
 
 void TaskModel::onUserChanged()

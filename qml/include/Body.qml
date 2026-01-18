@@ -7,7 +7,6 @@ SwipeView {
     id: swipeView
     anchors.fill: parent
     interactive: false
-    currentIndex: footer.currentIndex
 
     TasksPage {
         width: swipeView.width
@@ -17,5 +16,12 @@ SwipeView {
     ChartsPage {
         width: swipeView.width
         height: swipeView.height
+    }
+    
+    Connections {
+        target: footer
+        function onCurrentIndexChanged() {
+            swipeView.currentIndex = footer.currentIndex
+        }
     }
 }

@@ -1,5 +1,4 @@
-QT += quick quickcontrols2
-QT += core sql
+QT       += core gui quick quickcontrols2 sql opengl
 
 CONFIG += c++11
 
@@ -22,7 +21,8 @@ SOURCES += \
         main.cpp \
         src/feedback.cpp \
         src/task.cpp \
-        src/user.cpp
+        src/user.cpp \
+        src/openglbarchart.cpp
 
 RESOURCES += qml.qrc
 
@@ -41,7 +41,8 @@ HEADERS += \
     include/taskreader.h \
     include/user.h \
     include/usermodel.h \
-    include/userreader.h
+    include/userreader.h \
+    include/openglbarchart.h
 
 # Additional import path used to resolve QML modules in Qt Creator's code model
 QML_IMPORT_PATH += $$PWD/qml
