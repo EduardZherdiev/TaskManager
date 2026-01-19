@@ -34,10 +34,12 @@ public slots:
     void setCompletedColor(const QColor &color);
     void setInProgressColor(const QColor &color);
     void setArchivedColor(const QColor &color);
+    void restartAnimation();
 
 signals:
     void valuesChanged();
     void colorsChanged();
+    void animationRequested();
 
 private:
     void requestRepaint();
@@ -48,4 +50,5 @@ private:
     QColor m_completedColor{0x4CAF50};
     QColor m_inProgressColor{0xFFC107};
     QColor m_archivedColor{0xF44336};
+    mutable void* m_renderer{nullptr};
 };

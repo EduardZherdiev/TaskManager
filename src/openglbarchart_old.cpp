@@ -14,11 +14,6 @@ namespace {
 class BarChartRenderer final : public QQuickFramebufferObject::Renderer, protected QOpenGLFunctions {
 public:
     struct RGB { float r, g, b; };
-    
-    // Animation constants as static members (shared, not recreated)
-    static constexpr float ANIMATION_DURATION = 1000.0f;
-    static constexpr float STAGGER_DELAY = 150.0f;
-    static constexpr qint64 TOTAL_ANIMATION_TIME = static_cast<qint64>(ANIMATION_DURATION + 3 * STAGGER_DELAY);
 
     BarChartRenderer()
         : m_program(new QOpenGLShaderProgram)
@@ -28,39 +23,31 @@ public:
     ~BarChartRenderer() override {
         delete m_program;
     }
-    
-    void triggerAnimation() {
-        m_manualTrigger = true;
-    }
 
     void synchronize(QQuickFramebufferObject *item) override {
         auto *chart = static_cast<OpenGLBarChart *>(item);
-        
-        // Check for manual animation trigger
-        if (m_manualTrigger) {
-            m_animationTimer.restart();
-            m_animatedValues[0] = 0.0f;
-            m_animatedValues[1] = 0.0f;
-            m_animatedValues[2] = 0.0f;
-            m_manualTrigger = false;
-        }
 
         const float maxValue = static_cast<float>(std::max({1, chart->completed(), chart->inProgress(), chart->archived()}));
-        
+        m_values[0] = chart->completed() / maxValue;
+        m_values[1] = chart->inProgress() / maxValue;
+        m_values[2] = chart->archived() / maxValue;
+
         // Store target values and start animation when they change
-        const float newTarget0 = chart->completed() / maxValue;
-        const float newTarget1 = chart->inProgress() / maxValue;
-        const float newTarget2 = chart->archived() / maxValue;
+        float newTargets[3] = {
+            chart->completed() / maxValue,
+            chart->inProgress() / maxValue,
+            chart->archived() / maxValue
+        };
         
-        const bool valuesChanged = (m_targetValues[0] != newTarget0) ||
-                                    (m_targetValues[1] != newTarget1) ||
-                                    (m_targetValues[2] != newTarget2);
+        bool valuesChanged = false;
+        for (int i = 0; i < 3; ++i) {
+            if (m_targetValues[i] != newTargets[i]) {
+                m_targetValues[i] = newTargets[i];
+                valuesChanged = true;
+            }
+        }
         
         if (valuesChanged) {
-            m_targetValues[0] = newTarget0;
-            m_targetValues[1] = newTarget1;
-            m_targetValues[2] = newTarget2;
-            
             // Reset animation and start from zero
             m_animationTimer.restart();
             m_animatedValues[0] = 0.0f;
@@ -69,13 +56,13 @@ public:
         }
 
         // Get colors from QML and convert to normalized RGB (0.0-1.0)
-        const QColor c0 = chart->completedColor();
+        QColor c0 = chart->completedColor();
         m_colors[0] = {c0.redF(), c0.greenF(), c0.blueF()};
         
-        const QColor c1 = chart->inProgressColor();
+        QColor c1 = chart->inProgressColor();
         m_colors[1] = {c1.redF(), c1.greenF(), c1.blueF()};
         
-        const QColor c2 = chart->archivedColor();
+        QColor c2 = chart->archivedColor();
         m_colors[2] = {c2.redF(), c2.greenF(), c2.blueF()};
 
         // Trigger repaint when data changes
@@ -102,36 +89,45 @@ public:
             return;
 
         m_program->bind();
-        
         // Calculate animated values with staggered timing
-        const qint64 elapsed = m_animationTimer.elapsed();
+        const float ANIMATION_DURATION = 600.0f;  // 600ms total
+        const float STAGGER_DELAY = 150.0f;       // 150ms between bars
+        qint64 elapsed = m_animationTimer.elapsed();
         
-        // Calculate all three bars' animation progress
-        // Bar 0: starts at 0ms
-        calculateBarAnimation(0, elapsed, 0);
-        
-        // Bar 1: starts at STAGGER_DELAY (150ms)
-        calculateBarAnimation(1, elapsed, static_cast<qint64>(STAGGER_DELAY));
-        
-        // Bar 2: starts at 2*STAGGER_DELAY (300ms)
-        calculateBarAnimation(2, elapsed, static_cast<qint64>(2 * STAGGER_DELAY));
+        for (int i = 0; i < 3; ++i) {
+            qint64 barStartTime = i * static_cast<qint64>(STAGGER_DELAY);
+            qint64 barElapsed = elapsed - barStartTime;
+            
+            if (barElapsed <= 0) {
+                m_animatedValues[i] = 0.0f;
+            } else if (barElapsed >= static_cast<qint64>(ANIMATION_DURATION)) {
+                m_animatedValues[i] = m_targetValues[i];
+            } else {
+                // Ease-out animation (cubic): t = 1 - (1-x)^3
+                float progress = barElapsed / ANIMATION_DURATION;
+                float eased = 1.0f - (1.0f - progress) * (1.0f - progress) * (1.0f - progress);
+                m_animatedValues[i] = m_targetValues[i] * eased;
+            }
+        }
         
         // Keep rendering until animation is complete
-        if (elapsed < TOTAL_ANIMATION_TIME) {
+        if (elapsed < static_cast<qint64>(ANIMATION_DURATION + 3 * STAGGER_DELAY)) {
             update();
         }
 
+
         // Positions for three bars across the viewport
-        static constexpr float barWidth = 0.35f;
-        static constexpr float spacing = 0.5f;
+        const float barWidth = 0.35f;
+        const float spacing = 0.5f;
 
         // Draw bars with animated values only
-        drawBar(-spacing, barWidth, m_animatedValues[0], m_colors[0].r, m_colors[0].g, m_colors[0].b);
-        drawBar(0.0f, barWidth, m_animatedValues[1], m_colors[1].r, m_colors[1].g, m_colors[1].b);
-        drawBar(spacing, barWidth, m_animatedValues[2], m_colors[2].r, m_colors[2].g, m_colors[2].b);
+        drawBar(-spacing, barWidth, m_animatedValues[0], m_colors[0].r, m_colors[0].g, m_colors[0].b); // completed
+        drawBar(0.0f, barWidth, m_animatedValues[1], m_colors[1].r, m_colors[1].g, m_colors[1].b);   // inProgress
+        drawBar(spacing, barWidth, m_animatedValues[2], m_colors[2].r, m_colors[2].g, m_colors[2].b); // archived
 
         m_program->release();
     }
+
 
     QOpenGLFramebufferObject *createFramebufferObject(const QSize &size) override {
         m_size = size;
@@ -143,23 +139,6 @@ public:
     }
 
 private:
-    // Helper to calculate single bar animation (extracted from loop)
-    inline void calculateBarAnimation(int barIndex, qint64 elapsed, qint64 startDelay) {
-        const qint64 barElapsed = elapsed - startDelay;
-        
-        if (barElapsed <= 0) {
-            m_animatedValues[barIndex] = 0.0f;
-        } else if (barElapsed >= static_cast<qint64>(ANIMATION_DURATION)) {
-            m_animatedValues[barIndex] = m_targetValues[barIndex];
-        } else {
-            // Ease-out animation (cubic): t = 1 - (1-x)^3
-            const float progress = static_cast<float>(barElapsed) / ANIMATION_DURATION;
-            const float oneMinusProgress = 1.0f - progress;
-            const float eased = 1.0f - oneMinusProgress * oneMinusProgress * oneMinusProgress;
-            m_animatedValues[barIndex] = m_targetValues[barIndex] * eased;
-        }
-    }
-
     void initProgram() {
         static const char *vertexSrc = R"(
             attribute vec3 position;
@@ -192,7 +171,7 @@ private:
     void drawBar(float centerX, float width, float normalizedHeight, float r, float g, float b) {
         const float halfWidth = width * 0.5f;
         const float bottom = -1.0f;
-        const float top = bottom + normalizedHeight * 2.0f;
+        const float top = bottom + normalizedHeight * 2.0f; // scale into [-1,1]
 
         const float vertices[] = {
             centerX - halfWidth, bottom, 0.0f,
@@ -240,13 +219,11 @@ private:
     int m_posAttr{-1};
     int m_colorAttr{-1};
     QSize m_size;
+    float m_values[3]{0.0f, 0.0f, 0.0f};
     RGB m_colors[3]{{0.29f, 0.80f, 0.31f}, {1.00f, 0.76f, 0.03f}, {0.96f, 0.26f, 0.21f}};
     float m_targetValues[3]{0.0f, 0.0f, 0.0f};
     float m_animatedValues[3]{0.0f, 0.0f, 0.0f};
     QElapsedTimer m_animationTimer;
-    bool m_manualTrigger{false};
-    
-friend class OpenGLBarChart;
 };
 } // namespace
 
@@ -259,15 +236,7 @@ OpenGLBarChart::OpenGLBarChart(QQuickItem *parent)
 
 QQuickFramebufferObject::Renderer *OpenGLBarChart::createRenderer() const
 {
-    auto *renderer = new BarChartRenderer();
-    m_renderer = renderer;
-    
-    // Connect animation restart signal
-    connect(this, &OpenGLBarChart::animationRequested, [renderer]() {
-        renderer->triggerAnimation();
-    });
-    
-    return renderer;
+    return new BarChartRenderer();
 }
 
 void OpenGLBarChart::setCompleted(int value)
@@ -327,10 +296,4 @@ void OpenGLBarChart::setArchivedColor(const QColor &color)
     m_archivedColor = color;
     emit colorsChanged();
     requestRepaint();
-}
-
-void OpenGLBarChart::restartAnimation()
-{
-    emit animationRequested();
-    update();
 }

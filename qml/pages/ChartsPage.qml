@@ -7,6 +7,13 @@ import core
 Rectangle {
     id: root
     color: Style.backgroundColor
+    
+    // Trigger animation when this page becomes current in SwipeView
+    SwipeView.onIsCurrentItemChanged: {
+        if (SwipeView.isCurrentItem) {
+            barChart.restartAnimation()
+        }
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -29,6 +36,7 @@ Rectangle {
             color: "transparent"
 
             OpenGLBarChart {
+                id: barChart
                 anchors.fill: parent
                 completed: TaskModel.completedCount
                 inProgress: TaskModel.inProgressCount
