@@ -4,6 +4,8 @@
 #include "database/dbtypes.h"
 #include <iterator>
 #include <QDateTime>
+#include <QDate>
+#include <QDebug>
 
 using namespace DBTypes;
 
@@ -75,7 +77,8 @@ std::vector<Task> transform(const std::vector<DBEntry>& source)
 }
 
 
-std::pair<bool, std::vector<Task>> TaskReader::requestTaskBrowse(bool showDeleted, int userId)
+std::pair<bool, std::vector<Task>> TaskReader::requestTaskBrowse(bool showDeleted, int userId, 
+                                                                   int filterMonth, int filterYear)
 {
     DBResult result;
     std::vector<DBEntry> entries;
@@ -92,6 +95,20 @@ std::pair<bool, std::vector<Task>> TaskReader::requestTaskBrowse(bool showDelete
         where += "DeletedAt IS NOT NULL";
     } else {
         where += "DeletedAt IS NULL";
+    }
+    
+    // Add month/year filter if specified
+    if (filterMonth >= 0 && filterYear >= 0) {
+        // Add filter for date range: first day to last day of the month
+        QDate startDate(filterYear, filterMonth + 1, 1);
+        QDate endDate = startDate.addMonths(1).addDays(-1);
+        
+        where += " AND strftime('%Y-%m', CreatedAt) = ?";
+        args << QString("%1-%2").arg(filterYear, 4, 10, QChar('0')).arg(filterMonth + 1, 2, 10, QChar('0'));
+        
+        qDebug() << "[SQL WHERE] Month filter:" << startDate.toString("MMMM yyyy") 
+                 << "from" << startDate.toString("yyyy-MM-dd") 
+                 << "to" << endDate.toString("yyyy-MM-dd");
     }
 
     std::tie(result, entries) = DBProcessing::instance().requestTableDataWhere(DBTables::Tasks, where, args);

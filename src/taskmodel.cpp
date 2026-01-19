@@ -89,6 +89,12 @@ void TaskModel::setError(const QString& err)
 TaskModel::TaskModel()
 {
     // UserModel will be set via setUserModel() from main.cpp
+    
+    // Initialize filter with current month
+    QDate today = QDate::currentDate();
+    m_filterMonth = today.month() - 1;  // 0-11
+    m_filterYear = today.year();
+    qDebug() << "[INIT] TaskModel initialized with current month filter:" << today.toString("MMMM yyyy");
 }
 
 void TaskModel::setUserModel(UserModel* userModel)
@@ -167,21 +173,9 @@ bool TaskModel::updateTask()
     qDebug() << "Loading tasks from database...";
     bool requestResult {false};
     std::vector<Task> TaskResult;
-    std::tie(requestResult, TaskResult) = m_reader.requestTaskBrowse(m_showDeleted, userId);
+    // Pass month/year filter directly to database query
+    std::tie(requestResult, TaskResult) = m_reader.requestTaskBrowse(m_showDeleted, userId, m_filterMonth, m_filterYear);
     qDebug() << "Tasks loaded, count:" << TaskResult.size();
-    
-    // Apply month filter if set
-    if (m_filterMonth >= 0 && m_filterYear >= 0) {
-        TaskResult.erase(
-            std::remove_if(TaskResult.begin(), TaskResult.end(), 
-                [this](const Task& task) {
-                    QDate date = task.createdAt().date();
-                    return date.month() - 1 != m_filterMonth || date.year() != m_filterYear;
-                }),
-            TaskResult.end()
-        );
-        qDebug() << "Tasks after month filter:" << TaskResult.size();
-    }
     
     if (requestResult) {
         qDebug() << "Starting model update...";
@@ -481,6 +475,15 @@ void TaskModel::setFilterMonth(int month, int year)
     
     m_filterMonth = month;
     m_filterYear = year;
+    
+    // Log filter parameters
+    if (month < 0 || year < 0) {
+        qDebug() << "[SQL FILTER] Showing all months (no date filter)";
+    } else {
+        qDebug() << "[SQL FILTER] Month:" << month << "Year:" << year;
+        qDebug() << "[SQL FILTER] Filter will show tasks created in" << QDate(year, month + 1, 1).toString("MMMM yyyy");
+    }
+    
     emit filterMonthChanged();
     emit filterYearChanged();
     

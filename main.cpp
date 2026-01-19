@@ -7,6 +7,7 @@
 #include "include/Feedbackmodel.h"
 #include "include/usermodel.h"
 #include "include/openglbarchart.h"
+#include "include/openglbarchart3d.h"
 
 int main(int argc, char *argv[])
 {
@@ -47,6 +48,7 @@ int main(int argc, char *argv[])
 
     // Register OpenGL-based bar chart for QML usage
     qmlRegisterType<OpenGLBarChart>("core", 1, 0, "OpenGLBarChart");
+    qmlRegisterType<OpenGLBarChart3D>("core", 1, 0, "OpenGLBarChart3D");
     
     engine.addImportPath(":/qml");
     const QUrl url(QStringLiteral("qrc:/main.qml"));

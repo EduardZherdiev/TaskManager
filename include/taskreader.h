@@ -12,7 +12,8 @@ class TaskReader
 public:
     TaskReader();
     std::pair<bool,
-              std::vector<Task>> requestTaskBrowse(bool showDeleted = false, int userId = -1);
+              std::vector<Task>> requestTaskBrowse(bool showDeleted = false, int userId = -1, 
+                                                   int filterMonth = -1, int filterYear = -1);
     ~TaskReader();
 
 private:

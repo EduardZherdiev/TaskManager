@@ -37,21 +37,28 @@ Rectangle {
             ComboBox {
                 id: monthFilter
                 model: [
+                    "All",
                     "January", "February", "March", "April", "May", "June",
                     "July", "August", "September", "October", "November", "December"
                 ]
-                currentIndex: new Date().getMonth()
+                currentIndex: new Date().getMonth() + 1
                 onActivated: function(index) {
-                    var today = new Date()
-                    var selectedMonth = index
-                    var selectedYear = today.getFullYear()
-                    
-                    // If selected month is in the future, it's from previous year
-                    if (selectedMonth > today.getMonth()) {
-                        selectedYear = today.getFullYear() - 1
+                    if (index === 0) {
+                        // "All" selected - show all months
+                        TaskModel.setFilterMonth(-1, -1)
+                    } else {
+                        // Month selected (1-12, so actual month is index-1)
+                        var today = new Date()
+                        var selectedMonth = index - 1
+                        var selectedYear = today.getFullYear()
+                        
+                        // If selected month is in the future, it's from previous year
+                        if (selectedMonth > today.getMonth()) {
+                            selectedYear = today.getFullYear() - 1
+                        }
+                        
+                        TaskModel.setFilterMonth(selectedMonth, selectedYear)
                     }
-                    
-                    TaskModel.setFilterMonth(selectedMonth, selectedYear)
                 }
             }
         }

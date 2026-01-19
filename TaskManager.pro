@@ -22,7 +22,9 @@ SOURCES += \
         src/feedback.cpp \
         src/task.cpp \
         src/user.cpp \
-        src/openglbarchart.cpp
+        src/openglbarchart.cpp \
+        src/openglbarchart3d.cpp \
+        src/keyboardhandler.cpp
 
 RESOURCES += qml.qrc
 
@@ -42,7 +44,11 @@ HEADERS += \
     include/user.h \
     include/usermodel.h \
     include/userreader.h \
-    include/openglbarchart.h
+    include/openglbarchart.h \
+    include/openglbarchart3d.h \
+    include/keyboardhandler.h
+
+win32:RC_FILE = TaskManager.rc
 
 # Additional import path used to resolve QML modules in Qt Creator's code model
 QML_IMPORT_PATH += $$PWD/qml

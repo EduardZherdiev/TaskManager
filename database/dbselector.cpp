@@ -2,6 +2,7 @@
 #include "dbmanager.h"
 #include <QtSql/QSqlQuery>
 #include <QtSql/QSqlRecord>
+#include <QDebug>
 
 using namespace DBTypes;
 
@@ -21,6 +22,17 @@ DBResult DBSelector::selectWhere(
 
     if (!where.empty()) {
         queryText += " WHERE " + where;
+    }
+
+    // Log SQL query with parameters
+    qDebug() << "[SQL QUERY]" << QString::fromStdString(queryText);
+    if (!args.isEmpty()) {
+        QString paramStr = "[SQL PARAMS] ";
+        for (int i = 0; i < args.size(); ++i) {
+            if (i > 0) paramStr += ", ";
+            paramStr += "?" + QString::number(i + 1) + "=" + args[i].toString();
+        }
+        qDebug() << paramStr;
     }
 
     DBResult result;
