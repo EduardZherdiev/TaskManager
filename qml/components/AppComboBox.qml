@@ -17,6 +17,7 @@ ComboBox {
                 anchors.right: parent.right
                 anchors.rightMargin: 4
                 source: ResourceManager.icon("arrow-down", "png")
+                invertColors: false
             }
 
 

@@ -61,5 +61,6 @@
         <file>qml/pages/qmldir</file>
         <file>qml/pages/TasksPage.qml</file>
         <file>qml/pages/ChartsPage.qml</file>
+        <file>assets/icons/hide.png</file>
     </qresource>
 </RCC>

@@ -14,6 +14,7 @@ class OpenGLBarChart3D : public QQuickFramebufferObject
     Q_PROPERTY(QColor archivedColor READ archivedColor WRITE setArchivedColor NOTIFY colorsChanged)
     Q_PROPERTY(float yaw READ yaw WRITE setYaw NOTIFY rotationChanged)
     Q_PROPERTY(float pitch READ pitch WRITE setPitch NOTIFY rotationChanged)
+    Q_PROPERTY(float scale READ scale WRITE setScale NOTIFY scaleChanged)
 
 public:
     explicit OpenGLBarChart3D(QQuickItem *parent = nullptr);
@@ -29,6 +30,7 @@ public:
 
     float yaw() const { return m_yaw; }
     float pitch() const { return m_pitch; }
+    float scale() const { return m_scale; }
 
 public slots:
     void setCompleted(int value);
@@ -39,11 +41,13 @@ public slots:
     void setArchivedColor(const QColor &color);
     void setYaw(float value);
     void setPitch(float value);
+    void setScale(float value);
 
 signals:
     void valuesChanged();
     void colorsChanged();
     void rotationChanged();
+    void scaleChanged();
 
 private:
     void requestRepaint();
@@ -56,4 +60,5 @@ private:
     QColor m_archivedColor{0xF44336};
     float m_yaw{30.0f};
     float m_pitch{-20.0f};
+    float m_scale{1.0f};
 };

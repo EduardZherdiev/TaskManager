@@ -28,6 +28,8 @@ public:
     Q_INVOKABLE bool checkPassword(const QString& password);
     Q_INVOKABLE bool updateUser(const QString& newLogin, const QString& oldPassword, const QString& newPassword);
     Q_INVOKABLE QString hashPassword(const QString& password);
+    Q_INVOKABLE QString validatePassword(const QString& password);
+    Q_INVOKABLE QString generatePassword();
 
 signals:
     void currentUserChanged();

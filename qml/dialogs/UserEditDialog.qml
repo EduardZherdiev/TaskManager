@@ -23,7 +23,8 @@ Dialog {
     background: Rectangle {
         radius: Style.largeRadius
         color: Style.surfaceColor
-        border.width: 0
+        border.width: 1
+        border.color: Style.componentOutline
     }
 
     ColumnLayout {
@@ -32,10 +33,10 @@ Dialog {
 
         Icon {
             Layout.alignment: Qt.AlignHCenter
-            width: 64
-            height: 64
+            implicitWidth: 100
+            implicitHeight: 100
             source: ResourceManager.icon("user", "png")
-            canChange: false
+            invertColors: true
         }
 
         Label {
@@ -87,7 +88,9 @@ Dialog {
             spacing: Style.mediumSpacing
             visible: passwordChangeVisible
 
-            property bool isVisible: false
+            property bool showCurrentPassword: false
+            property bool showNewPassword: false
+            property bool showConfirmPassword: false
 
             Column {
                 Layout.fillWidth: true
@@ -100,12 +103,31 @@ Dialog {
                     font.bold: true
                 }
 
-                TextField {
-                    id: currentPasswordField
+                Item {
                     width: parent.width
-                    placeholderText: qsTr("Enter current password")
-                    echoMode: TextInput.Password
-                    onAccepted: newPasswordField.forceActiveFocus()
+                    height: currentPasswordField.height
+
+                    TextField {
+                        id: currentPasswordField
+                        width: parent.width
+                        placeholderText: qsTr("Enter current password")
+                        echoMode: passwordChangeBlock.showCurrentPassword ? TextInput.Normal : TextInput.Password
+                        onAccepted: newPasswordField.forceActiveFocus()
+                        rightPadding: 40
+                    }
+
+                    Icon {
+                        anchors.right: parent.right
+                        anchors.rightMargin: Style.smallSpacing
+                        anchors.verticalCenter: parent.verticalCenter
+                        source: passwordChangeBlock.showCurrentPassword ? ResourceManager.icon("view","png") : ResourceManager.icon("hide","png")
+                        implicitWidth: 30
+                        implicitHeight: 30
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: passwordChangeBlock.showCurrentPassword = !passwordChangeBlock.showCurrentPassword
+                        }
+                    }
                 }
 
                 Label {
@@ -129,12 +151,31 @@ Dialog {
                     font.bold: true
                 }
 
-                TextField {
-                    id: newPasswordField
+                Item {
                     width: parent.width
-                    placeholderText: qsTr("Enter new password")
-                    echoMode: TextInput.Password
-                    onAccepted: confirmPasswordField.forceActiveFocus()
+                    height: newPasswordField.height
+
+                    TextField {
+                        id: newPasswordField
+                        width: parent.width
+                        placeholderText: qsTr("Enter new password")
+                        echoMode: passwordChangeBlock.showNewPassword ? TextInput.Normal : TextInput.Password
+                        onAccepted: confirmPasswordField.forceActiveFocus()
+                        rightPadding: 40
+                    }
+
+                    Icon {
+                        anchors.right: parent.right
+                        anchors.rightMargin: Style.smallSpacing
+                        anchors.verticalCenter: parent.verticalCenter
+                        source: passwordChangeBlock.showNewPassword ? ResourceManager.icon("view","png") : ResourceManager.icon("hide","png")
+                        implicitWidth: 30
+                        implicitHeight: 30
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: passwordChangeBlock.showNewPassword = !passwordChangeBlock.showNewPassword
+                        }
+                    }
                 }
             }
 
@@ -149,12 +190,31 @@ Dialog {
                     font.bold: true
                 }
 
-                TextField {
-                    id: confirmPasswordField
+                Item {
                     width: parent.width
-                    placeholderText: qsTr("Confirm new password")
-                    echoMode: TextInput.Password
-                    onAccepted: saveButton.clicked()
+                    height: confirmPasswordField.height
+
+                    TextField {
+                        id: confirmPasswordField
+                        width: parent.width
+                        placeholderText: qsTr("Confirm new password")
+                        echoMode: passwordChangeBlock.showConfirmPassword ? TextInput.Normal : TextInput.Password
+                        onAccepted: saveButton.clicked()
+                        rightPadding: 40
+                    }
+
+                    Icon {
+                        anchors.right: parent.right
+                        anchors.rightMargin: Style.smallSpacing
+                        anchors.verticalCenter: parent.verticalCenter
+                        source: passwordChangeBlock.showConfirmPassword ? ResourceManager.icon("view","png") : ResourceManager.icon("hide","png")
+                        implicitWidth: 30
+                        implicitHeight: 30
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: passwordChangeBlock.showConfirmPassword = !passwordChangeBlock.showConfirmPassword
+                        }
+                    }
                 }
             }
 

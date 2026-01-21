@@ -105,7 +105,9 @@ bool DBConnectionManager::setUpTables()
         CREATE TABLE IF NOT EXISTS Users (
             Id INTEGER PRIMARY KEY AUTOINCREMENT,
             Login TEXT UNIQUE NOT NULL,
-            PasswordHash TEXT NOT NULL
+            PasswordHash TEXT NOT NULL,
+            CHECK (length(trim(Login)) > 0),
+            CHECK (length(trim(PasswordHash)) > 0)
         );
         )",
 
@@ -122,7 +124,9 @@ bool DBConnectionManager::setUpTables()
             UpdatedAt DATETIME,
             DeletedAt DATETIME,
 
-            FOREIGN KEY (UserId) REFERENCES Users(Id) ON DELETE CASCADE
+            FOREIGN KEY (UserId) REFERENCES Users(Id) ON DELETE CASCADE,
+            CHECK (length(trim(Title)) > 0),
+            CHECK (State BETWEEN 0 AND 2)
         );
         )",
 
@@ -130,11 +134,12 @@ bool DBConnectionManager::setUpTables()
         CREATE TABLE IF NOT EXISTS Feedbacks (
             Id INTEGER PRIMARY KEY AUTOINCREMENT,
             UserId INTEGER NOT NULL,
-            Rate INTEGER NOT NULL CHECK (Rate BETWEEN 1 AND 5),
+            Rate INTEGER NOT NULL,
             Description TEXT,
             CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-            FOREIGN KEY (UserId) REFERENCES Users(Id) ON DELETE CASCADE
+            FOREIGN KEY (UserId) REFERENCES Users(Id) ON DELETE CASCADE,
+            CHECK (Rate BETWEEN 1 AND 5)
         );
         )"
     };

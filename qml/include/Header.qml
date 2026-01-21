@@ -133,7 +133,7 @@ Rectangle {
                 height: 26
                 anchors.horizontalCenter: parent.horizontalCenter
                 source: ResourceManager.icon("delete", "png")
-                canChange: false
+                invertColors: false
             }
 
             Switch {
@@ -166,11 +166,11 @@ Rectangle {
                     // Call signOut on UserModel - TaskModel will automatically update
                     UserModel.signOut()
                     
-                    // Clear saved credentials if not remembering
-                    if (!AppSettings.rememberLogin) {
-                        AppSettings.savedLogin = ""
-                        AppSettings.savedPasswordHash = ""
-                    }
+                    // Always clear saved credentials on sign out
+                    AppSettings.rememberLogin = false
+                    AppSettings.savedLogin = ""
+                    AppSettings.savedPasswordHash = ""
+                    
                     // After sign out, open sign-in dialog
                     signInDialog.open()
                 }
@@ -203,6 +203,10 @@ Rectangle {
                 onSignOutRequested: {
                     // Call signOut on UserModel
                     UserModel.signOut()
+                    // Always clear saved credentials on sign out
+                    AppSettings.rememberLogin = false
+                    AppSettings.savedLogin = ""
+                    AppSettings.savedPasswordHash = ""
                     // After sign out, open sign-in dialog
                     signInDialog.open()
                 }

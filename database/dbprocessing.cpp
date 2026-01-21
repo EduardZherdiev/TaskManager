@@ -1,7 +1,7 @@
 #include "dbprocessing.h"
 #include "dbmanipulator.h"
 #include <QDateTime>
-#include <QCryptographicHash>
+#include "argon2.h"
 
 DBProcessing::DBProcessing()
 {
@@ -44,8 +44,28 @@ void DBProcessing::insertTestData()
 
     // Helper function to hash passwords
     auto hashPassword = [](const QString& password) -> QString {
-        QByteArray hash = QCryptographicHash::hash(password.toUtf8(), QCryptographicHash::Sha256);
-        return QString(hash.toHex());
+        const char* salt = "TaskManagerSalt1";
+        char encoded[128];
+        
+        int result = argon2id_hash_encoded(
+            2,                          // t_cost (iterations)
+            65536,                      // m_cost (memory in KiB)
+            1,                          // parallelism
+            password.toUtf8().constData(),
+            password.toUtf8().length(),
+            salt,
+            strlen(salt),
+            32,                         // hash length
+            encoded,
+            sizeof(encoded)
+        );
+        
+        if (result != ARGON2_OK) {
+            qWarning() << "Argon2 hashing failed:" << argon2_error_message(result);
+            return QString();
+        }
+        
+        return QString::fromLatin1(encoded);
     };
 
     // Create users with hashed passwords

@@ -8,7 +8,7 @@ import core
 Rectangle {
     id: root
     color: Style.backgroundColor
-    
+
     // Trigger animation when this page becomes current in SwipeView
     SwipeView.onIsCurrentItemChanged: {
         if (SwipeView.isCurrentItem) {
@@ -19,7 +19,7 @@ Rectangle {
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: Style.bigSpacing
-        spacing: Style.bigSpacing
+        spacing: Style.mediumSpacing
 
         Label {
             text: qsTr("Tasks Status Distribution")
@@ -31,25 +31,29 @@ Rectangle {
 
         RowLayout {
             Layout.fillWidth: true
+            Layout.fillHeight: true
             spacing: Style.mediumSpacing
 
             ColumnLayout {
                 Layout.alignment: Qt.AlignTop
                 spacing: Style.smallSpacing
-                
+                Layout.fillHeight: false
+
                 TabBar {
                     id: tabBar
                     Layout.preferredWidth: 150
-                    background: Rectangle { color: "transparent" }
+                    background: Rectangle {
+                        color: "transparent"
+                    }
                     spacing: Style.smallSpacing
-                    
+
                     onCurrentIndexChanged: {
                         // Trigger 2D animation when switching to 2D tab
                         if (currentIndex === 0) {
                             barChart2d.restartAnimation()
                         }
                     }
-                    
+
                     TabButton {
                         text: qsTr("2D")
                         width: 60
@@ -59,12 +63,13 @@ Rectangle {
                         width: 60
                     }
                 }
-                
+
                 // Legend below TabBar
                 Column {
                     spacing: Style.smallSpacing
                     Layout.topMargin: Style.mediumSpacing
-                    
+                    Layout.bottomMargin: Style.mediumSpacing
+
                     Row {
                         spacing: 8
                         Rectangle {
@@ -116,9 +121,37 @@ Rectangle {
                         }
                     }
                 }
+
+                Text {
+                    text: tabBar.currentIndex
+                          === 1 ? qsTr("Rotate: Arrow Keys") : ""
+                    color: Style.textSecondaryColor
+                    font.pixelSize: Style.smallFont
+                    Layout.alignment: Qt.AlignLeft | Qt.AlignVCenter
+                }
+                Text {
+                    text: tabBar.currentIndex
+                          === 1 ? qsTr("Zoom: +/-") : ""
+                    color: Style.textSecondaryColor
+                    font.pixelSize: Style.smallFont
+                    Layout.alignment: Qt.AlignLeft | Qt.AlignVCenter
+                }
+                Text {
+                    text: tabBar.currentIndex
+                          === 1 ? qsTr("Reset: Space") : ""
+                    color: Style.textSecondaryColor
+                    font.pixelSize: Style.smallFont
+                    Layout.alignment: Qt.AlignLeft | Qt.AlignVCenter
+                }
+
+                Text {
+                    text: tabBar.currentIndex === 1 ? qsTr("Click on chart to restore focus") : ""
+                    color: Style.textSecondaryColor
+                    font.pixelSize: Style.smallFont
+                    Layout.alignment: Qt.AlignLeft | Qt.AlignVCenter
+                }
             }
 
-            // Item { Layout.fillWidth: true }
 
             // Chart area
             Rectangle {
@@ -154,39 +187,55 @@ Rectangle {
                         property real startPitch: 0
                         focus: tabBar.currentIndex === 1
 
-                        // Keyboard control: A/D/W/S keys (layout-independent)
-                        Keys.onPressed: (event) => {
-                            // ESC or click on graph returns focus
-                            if (event.key === Qt.Key_Escape) {
-                                chart3dContainer.forceActiveFocus()
-                                event.accepted = true
-                                return
-                            }
+                        // Keyboard control: Arrow keys, +/-, Space
+                        Keys.onPressed: event => {
+                                            // ESC returns focus
+                                            if (event.key === Qt.Key_Escape) {
+                                                chart3dContainer.forceActiveFocus()
+                                                event.accepted = true
+                                                return
+                                            }
 
-                            const rotationStep = 5.0
-                            let handled = false
+                                            const rotationStep = 5.0
+                                            const zoomStep = 0.1
+                                            let handled = false
 
-                            // Check by both key code and text to support any keyboard layout
-                            const lowerText = event.text.toLowerCase()
+                                            // Arrow keys for rotation
+                                            if (event.key === Qt.Key_Left) {
+                                                barChart3d.yaw -= rotationStep
+                                                handled = true
+                                            } else if (event.key === Qt.Key_Right) {
+                                                barChart3d.yaw += rotationStep
+                                                handled = true
+                                            } else if (event.key === Qt.Key_Up) {
+                                                barChart3d.pitch -= rotationStep
+                                                handled = true
+                                            } else if (event.key === Qt.Key_Down) {
+                                                barChart3d.pitch += rotationStep
+                                                handled = true
+                                            } // Plus/Equals for zoom in
+                                            else if (event.key === Qt.Key_Plus
+                                                     || event.key === Qt.Key_Equal) {
+                                                barChart3d.scale += zoomStep
+                                                handled = true
+                                            } // Minus for zoom out
+                                            else if (event.key === Qt.Key_Minus) {
+                                                if (barChart3d.scale > zoomStep) {
+                                                    barChart3d.scale -= zoomStep
+                                                }
+                                                handled = true
+                                            } // Space to reset
+                                            else if (event.key === Qt.Key_Space) {
+                                                barChart3d.yaw = 30.0
+                                                barChart3d.pitch = -20.0
+                                                barChart3d.scale = 1.0
+                                                handled = true
+                                            }
 
-                            if (lowerText === "a" || lowerText === "ф" || event.key === Qt.Key_A) {
-                                barChart3d.yaw -= rotationStep
-                                handled = true
-                            } else if (lowerText === "d" || lowerText === "в" || event.key === Qt.Key_D) {
-                                barChart3d.yaw += rotationStep
-                                handled = true
-                            } else if (lowerText === "w" || lowerText === "ц" || event.key === Qt.Key_W) {
-                                barChart3d.pitch -= rotationStep
-                                handled = true
-                            } else if (lowerText === "s" || lowerText === "ы" || event.key === Qt.Key_S) {
-                                barChart3d.pitch += rotationStep
-                                handled = true
-                            }
-
-                            if (handled) {
-                                event.accepted = true
-                            }
-                        }
+                                            if (handled) {
+                                                event.accepted = true
+                                            }
+                                        }
 
                         OpenGLBarChart3D {
                             id: barChart3d
@@ -209,15 +258,6 @@ Rectangle {
                     }
                 }
             }
-
-
-            Text {
-                text: tabBar.currentIndex === 1 ? qsTr("Rotate: A/D/W/S • Click on chart to restore focus") : ""
-                color: Style.textSecondaryColor
-                font.pixelSize: Style.smallFont
-                Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
-            }
         }
-
-     }
+    }
 }

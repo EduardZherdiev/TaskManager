@@ -8,7 +8,7 @@ Dialog {
     id: taskDialog
     modal: true
     width: 520
-    height: 420
+    height: 425
     parent: Overlay.overlay
     anchors.centerIn: Overlay.overlay
     closePolicy: Dialog.NoAutoClose
@@ -20,13 +20,15 @@ Dialog {
     property string createdAt: ""
     property string updatedAt: ""
     property string deletedAt: ""
+    property bool titleTouched: false
 
     signal saveRequested(int taskId, string title, string description, int taskState)
 
     background: Rectangle {
         radius: Style.largeRadius
         color: Style.surfaceColor
-        border.width: 0 // remove outline line under buttons
+        border.width: 1
+        border.color: Style.componentOutline
     }
 
     ColumnLayout {
@@ -127,12 +129,32 @@ Dialog {
             ColumnLayout {
                 spacing: Style.smallSpacing
                 Layout.fillWidth: true
-                TextField {
-                    id: titleField
+                
+                ColumnLayout {
                     Layout.fillWidth: true
-                    placeholderText: qsTr("Title")
-                    text: taskDialog.taskTitle
+                    spacing: 4
+                    
+                    TextField {
+                        id: titleField
+                        Layout.fillWidth: true
+                        placeholderText: qsTr("Title *")
+                        text: taskDialog.taskTitle
+                        onTextChanged: taskDialog.titleTouched = true
+                        background: Rectangle {
+                            color: Style.controlBackground
+                            border.color: titleField.activeFocus ? Style.controlActiveBorder : (taskDialog.titleTouched && titleField.text.trim().length === 0 ? "#F44336" : Style.controlBorder)
+                            radius: Style.mediumRadius
+                        }
+                    }
+                    
+                    Text {
+                        text: taskDialog.titleTouched && titleField.text.trim().length === 0 ? qsTr("Title is required") : ""
+                        color: "#F44336"
+                        font.pixelSize: 10
+                        visible: taskDialog.titleTouched && titleField.text.trim().length === 0
+                    }
                 }
+                
                 Flickable {
                     id: flickable
                     Layout.fillWidth: true
@@ -188,11 +210,13 @@ Dialog {
             Button {
                 text: qsTr("Save")
                 type: 2
+                enabled: titleField.text.trim().length > 0
                 onClicked: {
-                    taskDialog.saveRequested(taskDialog.taskId, titleField.text, descriptionField.text, stateCombo.currentIndex)
+                    taskDialog.saveRequested(taskDialog.taskId, titleField.text.trim(), descriptionField.text, stateCombo.currentIndex)
                     taskDialog.close()
                 }
             }
+            Item { Layout.fillWidth: true }
         }
     }
 
@@ -207,6 +231,7 @@ Dialog {
         titleField.text = taskTitle
         descriptionField.text = taskDescription
         stateCombo.currentIndex = taskState
+        titleTouched = false  // Reset flag when opening dialog
         // Open in Edit tab for new tasks, View tab for existing
         tabs.currentIndex = (taskId === -1) ? 1 : 0
         open()

@@ -24,7 +24,13 @@ SOURCES += \
         src/user.cpp \
         src/openglbarchart.cpp \
         src/openglbarchart3d.cpp \
-        src/keyboardhandler.cpp
+        src/keyboardhandler.cpp \
+        argon2/src/argon2.c \
+        argon2/src/core.c \
+        argon2/src/encoding.c \
+        argon2/src/thread.c \
+        argon2/src/blake2/blake2b.c \
+        argon2/src/ref.c
 
 RESOURCES += qml.qrc
 
@@ -48,9 +54,26 @@ HEADERS += \
     include/openglbarchart3d.h \
     include/keyboardhandler.h
 
+# Argon2 include paths
+INCLUDEPATH += $$PWD/argon2/include \
+               $$PWD/argon2/src
+
 win32:RC_FILE = TaskManager.rc
 
-# Additional import path used to resolve QML modules in Qt Creator's code model
+# Copy assets folder to build directory
+win32 {
+    CONFIG(debug, debug|release) {
+        DESTDIR = $$OUT_PWD/debug
+    } else {
+        DESTDIR = $$OUT_PWD/release
+    }
+    
+    copydata.commands = $(COPY_DIR) $$shell_path($$PWD/assets/img) $$shell_path($$DESTDIR/assets/img)
+    first.depends = $(OBJECTS_DIR) copydata
+    export(first.depends)
+    export(copydata.commands)
+    QMAKE_EXTRA_TARGETS += first copydata
+}
 QML_IMPORT_PATH += $$PWD/qml
 QML2_IMPORT_PATH += $$PWD/qml
 

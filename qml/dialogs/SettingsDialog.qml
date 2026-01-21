@@ -6,26 +6,24 @@ import core
 import dialogs 1.0
 
 //Write simple Rectangle component
-
-
-
-
-
 Dialog {
     id: dialog
     modal: true
     width: 400
-    height: 550
+    height: 500
     parent: Overlay.overlay
     anchors.centerIn: Overlay.overlay
     closePolicy: Dialog.NoAutoClose
+    padding: Style.mediumSpacing
 
-    signal profileEditRequested()
-    signal signOutRequested()
+    signal profileEditRequested
+    signal signOutRequested
 
     background: Rectangle {
         radius: Style.largeRadius
         color: Style.surfaceColor
+        border.width: 1
+        border.color: Style.componentOutline
     }
 
     Column {
@@ -82,7 +80,7 @@ Dialog {
                 width: parent.width
                 model: ["English", "Українська", "Deutsch"]
                 currentIndex: AppSettings.language
-                onActivated: function(index) {
+                onActivated: function (index) {
                     AppSettings.language = index
                 }
             }
@@ -120,56 +118,42 @@ Dialog {
         }
 
         // ===== USER SECTION =====
-        Rectangle {
-            width: parent.width - 2 * Style.smallSpacing
-            height: 1
-            color: Style.componentOutline
+        Button {
+            text: qsTr("Profile")
+            width: parent.width
+            onClicked: {
+                dialog.profileEditRequested()
+            }
         }
 
-        Label {
-            text: qsTr("User: ") + TaskModel.currentUserLogin
-            font.bold: true
-            color: Style.textColor
-            font.pixelSize: Style.mediumFont
+        Button {
+            text: qsTr("Sign Out")
+            width: parent.width
+            type: 1
+            onClicked: {
+                UserModel.signOut()
+                dialog.close()
+                dialog.signOutRequested()
+            }
         }
 
-            Button {
-                text: qsTr("Profile")
-                width: parent.width
-                onClicked: {
-                    dialog.profileEditRequested()
-                }
-            }
+        FeedbackDialog {
+            id: feedbackDialog
+        }
 
-            Button {
-                text: qsTr("Sign Out")
-                width: parent.width
-                type: 1
-                onClicked: {
-                    UserModel.signOut()
-                    dialog.close()
-                    dialog.signOutRequested()
-                }
+        Button {
+            text: qsTr("Feedback")
+            width: parent.width
+            type: 1
+            onClicked: {
+                feedbackDialog.open()
             }
+        }
 
-            FeedbackDialog {
-                id: feedbackDialog
-            }
-
-            Button {
-                text: qsTr("Feedback")
-                width: parent.width
-                type: 1
-                onClicked: {
-                    feedbackDialog.open()
-                }
-            }
-
-            Button {
-                text: qsTr("Close")
-                width: parent.width
-                onClicked: dialog.close()
-            }
-
+        Button {
+            text: qsTr("Close")
+            width: parent.width
+            onClicked: dialog.close()
+        }
     }
 }

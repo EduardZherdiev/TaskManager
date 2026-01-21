@@ -8,25 +8,26 @@ Item {
     implicitWidth: 40
     implicitHeight: 40
 
-    property url source: ""
-    property bool canChange: true
+    property url source
+    property bool invertColors: Style.isDarkTheme
+    property real brightnessValue: 1.0
+    property real contrastValue: 1.0
+    property real saturationValue: 1.0
 
     Image {
         id: icon
         anchors.fill: parent
         source: root.source
-        visible: true
+        smooth: true
     }
 
     MultiEffect {
         anchors.fill: parent
-        source: root.canChange ? icon : null
+        source: icon
+        visible: root.invertColors
 
-        colorization: 1.0
-        colorizationColor: Style.textColor
-
-        brightness: 0.0
-        contrast: 1.0
-        saturation: 0.0
+        brightness: root.brightnessValue
+        contrast: root.contrastValue
+        saturation: root.saturationValue
     }
 }

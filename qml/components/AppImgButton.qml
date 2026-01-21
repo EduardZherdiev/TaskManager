@@ -15,6 +15,7 @@ AppButton {
 
         scale: btn.imgScale
         source: btn.source
+        invertColors: false
     }
 
 }

@@ -284,6 +284,18 @@ void TaskModel::sortTasks()
 
 bool TaskModel::createTask(const QString& title, const QString& description, int state)
 {
+    // Validate title
+    if (title.trimmed().isEmpty()) {
+        setError("Task title cannot be empty");
+        return false;
+    }
+
+    // Validate state (0=Active, 1=Completed, 2=Archived)
+    if (state < 0 || state > 2) {
+        setError("Invalid task state");
+        return false;
+    }
+
     int userId = getCurrentUserId();
     if (userId < 0) {
         setError("No user signed in");
@@ -313,6 +325,18 @@ bool TaskModel::createTask(const QString& title, const QString& description, int
 
 bool TaskModel::updateTask(int taskId, const QString& title, const QString& description, int state)
 {
+    // Validate title
+    if (title.trimmed().isEmpty()) {
+        setError("Task title cannot be empty");
+        return false;
+    }
+
+    // Validate state (0=Active, 1=Completed, 2=Archived)
+    if (state < 0 || state > 2) {
+        setError("Invalid task state");
+        return false;
+    }
+
     int userId = getCurrentUserId();
     if (userId < 0) {
         setError("No user signed in");

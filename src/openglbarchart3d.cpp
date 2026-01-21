@@ -6,19 +6,25 @@
 #include <QOpenGLFramebufferObject>
 #include <QMatrix4x4>
 #include <QVector3D>
+#include <QVector2D>
+#include <QImage>
+#include <QCoreApplication>
 #include <algorithm>
 #include <vector>
 
 namespace {
 struct Vertex {
     QVector3D pos;
-    QVector3D color;
+    QVector2D uv;
 };
 
 class BarChartRenderer3D final : public QQuickFramebufferObject::Renderer, protected QOpenGLFunctions {
 public:
     BarChartRenderer3D() : m_program(new QOpenGLShaderProgram) {}
-    ~BarChartRenderer3D() override { delete m_program; }
+    ~BarChartRenderer3D() override { 
+        delete m_program;
+        if (m_textures[0]) glDeleteTextures(3, m_textures);
+    }
 
     void synchronize(QQuickFramebufferObject *item) override {
         auto *chart = static_cast<OpenGLBarChart3D *>(item);
@@ -28,27 +34,24 @@ public:
         m_heights[1] = chart->inProgress() / maxValue;
         m_heights[2] = chart->archived() / maxValue;
 
-        const QColor c0 = chart->completedColor();
-        const QColor c1 = chart->inProgressColor();
-        const QColor c2 = chart->archivedColor();
-        m_colors[0] = QVector3D(c0.redF(), c0.greenF(), c0.blueF());
-        m_colors[1] = QVector3D(c1.redF(), c1.greenF(), c1.blueF());
-        m_colors[2] = QVector3D(c2.redF(), c2.greenF(), c2.blueF());
-
         m_yaw = chart->yaw();
         m_pitch = chart->pitch();
+        m_scale = chart->scale();
         m_pendingUpdate = true;
     }
 
     void render() override {
         if (!m_initialized) {
             initializeOpenGLFunctions();
+            loadTextures();
             initProgram();
             m_initialized = true;
         }
 
         glViewport(0, 0, m_size.width(), m_size.height());
         glEnable(GL_DEPTH_TEST);
+        glEnable(GL_CULL_FACE);
+        glCullFace(GL_BACK);
         glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -59,10 +62,11 @@ public:
         QMatrix4x4 proj;
         proj.perspective(45.0f, m_size.width() / float(m_size.height() ? m_size.height() : 1), 0.1f, 20.0f);
         QMatrix4x4 view;
-        view.translate(0.0f, 0.0f, -3.5f);
+        view.translate(0.0f, 0.0f, -3.5f / m_scale);
         view.rotate(m_pitch, 1, 0, 0);
         view.rotate(m_yaw, 0, 1, 0);
         QMatrix4x4 model;
+        model.scale(m_scale);
         QMatrix4x4 mvp = proj * view * model;
 
         m_program->bind();
@@ -73,9 +77,10 @@ public:
         static const float depth = 0.35f;
         static const float spacing = 0.7f;
         const float xs[3] = {-spacing, 0.0f, spacing};
+        const int texIds[3] = {0, 1, 2};  // green, orange, red
 
         for (int i = 0; i < 3; ++i) {
-            drawBar(xs[i], width, depth, m_heights[i] * 2.0f, m_colors[i]);
+            drawBar(xs[i], width, depth, m_heights[i] * 2.0f, m_textures[texIds[i]]);
         }
 
         m_program->release();
@@ -96,22 +101,51 @@ public:
     }
 
 private:
+    void loadTextures() {
+        const char* texNames[3] = {
+            "green-bar.jpg",   // completed
+            "orange-bar.jpg",  // inProgress
+            "red-bar.jpg"      // archived
+        };
+
+        glGenTextures(3, m_textures);
+        
+        for (int i = 0; i < 3; ++i) {
+            QString texPath = QCoreApplication::applicationDirPath() + "/assets/img/" + texNames[i];
+            QImage img(texPath);
+            if (img.isNull()) {
+                qWarning() << "Failed to load texture:" << texPath;
+                continue;
+            }
+
+            img = img.convertToFormat(QImage::Format_RGBA8888);
+            
+            glBindTexture(GL_TEXTURE_2D, m_textures[i]);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img.width(), img.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, img.bits());
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        }
+    }
+
     void initProgram() {
         static const char *vs = R"(
             attribute vec3 position;
-            attribute vec3 color;
-            varying vec3 vColor;
+            attribute vec2 uv;
+            varying vec2 vUv;
             uniform mat4 mvp;
             void main() {
                 gl_Position = mvp * vec4(position, 1.0);
-                vColor = color;
+                vUv = uv;
             }
         )";
 
         static const char *fs = R"(
-            varying vec3 vColor;
+            varying vec2 vUv;
+            uniform sampler2D texture;
             void main() {
-                gl_FragColor = vec4(vColor, 1.0);
+                gl_FragColor = texture2D(texture, vUv);
             }
         )";
 
@@ -123,25 +157,24 @@ private:
             qWarning() << "Shader link error:" << m_program->log();
 
         m_posAttr = m_program->attributeLocation("position");
-        m_colorAttr = m_program->attributeLocation("color");
-        m_mvpUniform = m_program->uniformLocation("mvp");
+        m_uvAttr = m_program->attributeLocation("uv");
+        m_texUniform = m_program->uniformLocation("texture");
     }
 
     void appendFace(std::vector<Vertex> &verts,
-                    float x0, float y0, float z0,
-                    float x1, float y1, float z1,
-                    float x2, float y2, float z2,
-                    float x3, float y3, float z3,
-                    const QVector3D &color) {
-        verts.push_back({{x0,y0,z0}, color});
-        verts.push_back({{x1,y1,z1}, color});
-        verts.push_back({{x2,y2,z2}, color});
-        verts.push_back({{x0,y0,z0}, color});
-        verts.push_back({{x2,y2,z2}, color});
-        verts.push_back({{x3,y3,z3}, color});
+                    float x0, float y0, float z0, float u0, float v0,
+                    float x1, float y1, float z1, float u1, float v1,
+                    float x2, float y2, float z2, float u2, float v2,
+                    float x3, float y3, float z3, float u3, float v3) {
+        verts.push_back({{x0,y0,z0}, {u0,v0}});
+        verts.push_back({{x1,y1,z1}, {u1,v1}});
+        verts.push_back({{x2,y2,z2}, {u2,v2}});
+        verts.push_back({{x0,y0,z0}, {u0,v0}});
+        verts.push_back({{x2,y2,z2}, {u2,v2}});
+        verts.push_back({{x3,y3,z3}, {u3,v3}});
     }
 
-    void drawBar(float centerX, float w, float d, float h, const QVector3D &color) {
+    void drawBar(float centerX, float w, float d, float h, GLuint texture) {
         const float hx = w * 0.5f;
         const float hz = d * 0.5f;
         const float y0 = -1.0f;
@@ -151,41 +184,46 @@ private:
         verts.reserve(36);
 
         // Front
-        appendFace(verts, centerX - hx, y0, hz, centerX + hx, y0, hz, centerX + hx, y1, hz, centerX - hx, y1, hz, color);
+        appendFace(verts, centerX - hx, y0, hz, 0, 0, centerX + hx, y0, hz, 1, 0, centerX + hx, y1, hz, 1, 1, centerX - hx, y1, hz, 0, 1);
         // Back
-        appendFace(verts, centerX + hx, y0, -hz, centerX - hx, y0, -hz, centerX - hx, y1, -hz, centerX + hx, y1, -hz, color);
+        appendFace(verts, centerX + hx, y0, -hz, 0, 0, centerX - hx, y0, -hz, 1, 0, centerX - hx, y1, -hz, 1, 1, centerX + hx, y1, -hz, 0, 1);
         // Left
-        appendFace(verts, centerX - hx, y0, -hz, centerX - hx, y0, hz, centerX - hx, y1, hz, centerX - hx, y1, -hz, color);
+        appendFace(verts, centerX - hx, y0, -hz, 0, 0, centerX - hx, y0, hz, 1, 0, centerX - hx, y1, hz, 1, 1, centerX - hx, y1, -hz, 0, 1);
         // Right
-        appendFace(verts, centerX + hx, y0, hz, centerX + hx, y0, -hz, centerX + hx, y1, -hz, centerX + hx, y1, hz, color);
+        appendFace(verts, centerX + hx, y0, hz, 0, 0, centerX + hx, y0, -hz, 1, 0, centerX + hx, y1, -hz, 1, 1, centerX + hx, y1, hz, 0, 1);
         // Top
-        appendFace(verts, centerX - hx, y1, hz, centerX + hx, y1, hz, centerX + hx, y1, -hz, centerX - hx, y1, -hz, color);
+        appendFace(verts, centerX - hx, y1, hz, 0, 0, centerX + hx, y1, hz, 1, 0, centerX + hx, y1, -hz, 1, 1, centerX - hx, y1, -hz, 0, 1);
         // Bottom
-        appendFace(verts, centerX - hx, y0, -hz, centerX + hx, y0, -hz, centerX + hx, y0, hz, centerX - hx, y0, hz, color);
+        appendFace(verts, centerX - hx, y0, -hz, 0, 0, centerX + hx, y0, -hz, 1, 0, centerX + hx, y0, hz, 1, 1, centerX - hx, y0, hz, 0, 1);
 
         m_program->enableAttributeArray(m_posAttr);
-        m_program->enableAttributeArray(m_colorAttr);
+        m_program->enableAttributeArray(m_uvAttr);
 
         glVertexAttribPointer(m_posAttr, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), &verts[0].pos);
-        glVertexAttribPointer(m_colorAttr, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), &verts[0].color);
+        glVertexAttribPointer(m_uvAttr, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), &verts[0].uv);
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, texture);
+        m_program->setUniformValue(m_texUniform, 0);
 
         glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(verts.size()));
 
         m_program->disableAttributeArray(m_posAttr);
-        m_program->disableAttributeArray(m_colorAttr);
+        m_program->disableAttributeArray(m_uvAttr);
     }
 
     QOpenGLShaderProgram *m_program{nullptr};
     bool m_initialized{false};
     bool m_pendingUpdate{false};
-    int m_posAttr{-1};
-    int m_colorAttr{-1};
-    int m_mvpUniform{-1};
+    GLint m_posAttr{-1};
+    GLint m_uvAttr{-1};
+    GLint m_texUniform{-1};
+    GLuint m_textures[3]{0, 0, 0};
     QSize m_size;
     float m_heights[3]{0.0f, 0.0f, 0.0f};
-    QVector3D m_colors[3];
     float m_yaw{30.0f};
     float m_pitch{-20.0f};
+    float m_scale{1.0f};
 };
 } // namespace
 
@@ -270,6 +308,15 @@ void OpenGLBarChart3D::setPitch(float value)
         return;
     m_pitch = value;
     emit rotationChanged();
+    requestRepaint();
+}
+
+void OpenGLBarChart3D::setScale(float value)
+{
+    if (qFuzzyCompare(m_scale, value))
+        return;
+    m_scale = value;
+    emit scaleChanged();
     requestRepaint();
 }
 

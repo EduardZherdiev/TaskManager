@@ -14,13 +14,16 @@ Dialog {
 
     padding: Style.mediumSpacing
 
+    property bool showPassword: false
+
     signal signInRequested(string login, string password)
     signal requestRegister()
 
     background: Rectangle {
         radius: Style.largeRadius
         color: Style.surfaceColor
-        border.width: 0
+        border.width: 1
+        border.color: Style.componentOutline
     }
 
     ColumnLayout {
@@ -70,12 +73,31 @@ Dialog {
                 font.bold: true
             }
 
-            TextField {
-                id: passwordField
+            Item {
                 width: parent.width
-                placeholderText: qsTr("Enter password")
-                echoMode: TextInput.Password
-                onAccepted: signInButton.clicked()
+                height: passwordField.height
+
+                TextField {
+                    id: passwordField
+                    width: parent.width
+                    placeholderText: qsTr("Enter password")
+                    echoMode: dialog.showPassword ? TextInput.Normal : TextInput.Password
+                    onAccepted: signInButton.clicked()
+                    rightPadding: 40
+                }
+
+                Icon {
+                    anchors.right: parent.right
+                    anchors.rightMargin: Style.smallSpacing
+                    anchors.verticalCenter: parent.verticalCenter
+                    source: dialog.showPassword ? ResourceManager.icon("view","png") : ResourceManager.icon("hide","png")
+                    implicitWidth: 30
+                    implicitHeight: 30
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: dialog.showPassword = !dialog.showPassword
+                    }
+                }
             }
         }
 

@@ -1,7 +1,8 @@
 #include "include/usermodel.h"
 #include <QQmlEngine>
 #include <QDebug>
-#include <QCryptographicHash>
+#include <argon2.h>
+#include <QRandomGenerator>
 #include "database/dbprocessing.h"
 #include "database/dbtypes.h"
 
@@ -93,8 +94,37 @@ void UserModel::setError(const QString& err)
 
 QString UserModel::hashPassword(const QString& password)
 {
-    QByteArray hash = QCryptographicHash::hash(password.toUtf8(), QCryptographicHash::Sha256);
-    return QString(hash.toHex());
+    // Argon2id parameters
+    const uint32_t t_cost = 2;            // 2 iterations
+    const uint32_t m_cost = (1 << 16);    // 64 MiB memory usage
+    const uint32_t parallelism = 1;       // single-threaded
+    const size_t hashlen = 32;            // 32 bytes output
+    const size_t encodedlen = argon2_encodedlen(t_cost, m_cost, parallelism, 16, hashlen, Argon2_id);
+    
+    QByteArray passwordBytes = password.toUtf8();
+    QByteArray salt = "TaskManagerSalt1"; // Fixed salt (for production use random salt per user)
+    
+    char encoded[encodedlen];
+    
+    int result = argon2id_hash_encoded(
+        t_cost,
+        m_cost,
+        parallelism,
+        passwordBytes.constData(),
+        passwordBytes.size(),
+        salt.constData(),
+        salt.size(),
+        hashlen,
+        encoded,
+        encodedlen
+    );
+    
+    if (result != ARGON2_OK) {
+        qWarning() << "Argon2 hashing failed:" << argon2_error_message(result);
+        return QString();
+    }
+    
+    return QString::fromUtf8(encoded);
 }
 
 bool UserModel::signIn(const QString& login, const QString& password)
@@ -165,8 +195,11 @@ bool UserModel::registerUser(const QString& login, const QString& password)
         setError("Login cannot be empty");
         return false;
     }
-    if (password.isEmpty()) {
-        setError("Password cannot be empty");
+    
+    // Validate password
+    QString passwordError = validatePassword(password);
+    if (!passwordError.isEmpty()) {
+        setError(passwordError);
         return false;
     }
 
@@ -317,4 +350,72 @@ bool UserModel::updateUser(const QString& newLogin, const QString& oldPassword, 
     emit currentUserChanged();
     updateUsers();
     return true;
+}
+
+QString UserModel::validatePassword(const QString& password)
+{
+    // Minimum 12 characters
+    if (password.length() < 12) {
+        return "Password must be at least 12 characters long";
+    }
+
+    bool hasLower = false;
+    bool hasUpper = false;
+    bool hasDigit = false;
+    bool hasSpecial = false;
+
+    const QString specialChars = "!@#$%^&*()";
+
+    for (const QChar& c : password) {
+        if (c.isLower()) hasLower = true;
+        else if (c.isUpper()) hasUpper = true;
+        else if (c.isDigit()) hasDigit = true;
+        else if (specialChars.contains(c)) hasSpecial = true;
+    }
+
+    if (!hasLower) {
+        return "Password must contain lowercase letters (a-z)";
+    }
+    if (!hasUpper) {
+        return "Password must contain uppercase letters (A-Z)";
+    }
+    if (!hasDigit) {
+        return "Password must contain digits (0-9)";
+    }
+    if (!hasSpecial) {
+        return "Password must contain special characters (!@#$%^&*())";
+    }
+
+    return ""; // Empty string means password is valid
+}
+
+QString UserModel::generatePassword()
+{
+    const QString lowercase = "abcdefghijklmnopqrstuvwxyz";
+    const QString uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    const QString digits = "0123456789";
+    const QString special = "!@#$%^&*()";
+
+    QRandomGenerator rng(QRandomGenerator::securelySeeded());
+    QString password;
+
+    // Add at least one of each required character type
+    password += lowercase[rng.bounded(lowercase.length())];
+    password += uppercase[rng.bounded(uppercase.length())];
+    password += digits[rng.bounded(digits.length())];
+    password += special[rng.bounded(special.length())];
+
+    // Fill remaining 8 characters randomly from all character types
+    QString allChars = lowercase + uppercase + digits + special;
+    for (int i = 0; i < 8; ++i) {
+        password += allChars[rng.bounded(allChars.length())];
+    }
+
+    // Shuffle password
+    for (int i = password.length() - 1; i > 0; --i) {
+        int j = rng.bounded(i + 1);
+        std::swap(password[i], password[j]);
+    }
+
+    return password;
 }

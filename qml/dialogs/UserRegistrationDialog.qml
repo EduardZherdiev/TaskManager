@@ -3,6 +3,7 @@ import QtQuick.Controls 2.11
 import QtQuick.Layouts 1.11
 import StyleModule 1.0
 import components
+import core
 
 Dialog {
     id: dialog
@@ -12,13 +13,17 @@ Dialog {
     closePolicy: Dialog.NoAutoClose
     padding: Style.mediumSpacing
 
+    property bool showPassword: false
+    property bool showConfirmPassword: false
+
     signal registrationRequested(string login, string password)
     signal requestSignIn()
 
     background: Rectangle {
         radius: Style.largeRadius
         color: Style.surfaceColor
-        border.width: 0
+        border.width: 1
+        border.color: Style.componentOutline
     }
 
     ColumnLayout {
@@ -60,25 +65,72 @@ Dialog {
 
         Column {
             Layout.fillWidth: true
+            width: parent.width
             spacing: Style.smallSpacing
 
-            Label {
-                text: qsTr("Password")
-                color: Style.textColor
-                font.bold: true
+            RowLayout {
+                width: parent.width
+                spacing: Style.smallSpacing
+
+                Label {
+                    text: qsTr("Password")
+                    color: Style.textColor
+                    font.bold: true
+                }
+
+                Item { Layout.fillWidth: true }
+
+                Button {
+                    text: qsTr("Generate")
+                    flat: true
+                    onClicked: {
+                        passwordField.text = UserModel.generatePassword()
+                        confirmPasswordField.text = passwordField.text
+                        passwordField.selectAll()
+                    }
+                }
             }
 
-            TextField {
-                id: passwordField
+            Item {
                 width: parent.width
-                placeholderText: qsTr("Enter password")
-                echoMode: TextInput.Password
-                onAccepted: confirmPasswordField.forceActiveFocus()
+                height: passwordField.height
+
+                TextField {
+                    id: passwordField
+                    width: parent.width
+                    placeholderText: qsTr("Min 12 chars: a-z, A-Z, 0-9, !@#$%^&*()")
+                    echoMode: dialog.showPassword ? TextInput.Normal : TextInput.Password
+                    onAccepted: confirmPasswordField.forceActiveFocus()
+                    rightPadding: 40
+                }
+
+                Icon {
+                    anchors.right: parent.right
+                    anchors.rightMargin: Style.smallSpacing
+                    anchors.verticalCenter: parent.verticalCenter
+                    source: dialog.showPassword ? ResourceManager.icon("view","png") : ResourceManager.icon("hide","png")
+                    implicitWidth: 30
+                    implicitHeight: 30
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: dialog.showPassword = !dialog.showPassword
+                    }
+                }
+            }
+
+            Text {
+                width: parent.width
+                text: "• At least 12 characters\n• Lowercase letters (a-z)\n• Uppercase letters (A-Z)\n• Digits (0-9)\n• Special characters (!@#$%^&*())"
+                color: Style.textSecondaryColor
+                font.pixelSize: Style.smallFont
+                lineHeight: 1.4
+                horizontalAlignment: Text.AlignLeft
             }
         }
 
         Column {
             Layout.fillWidth: true
+            width: parent.width
             spacing: Style.smallSpacing
 
             Label {
@@ -87,12 +139,31 @@ Dialog {
                 font.bold: true
             }
 
-            TextField {
-                id: confirmPasswordField
+            Item {
                 width: parent.width
-                placeholderText: qsTr("Confirm password")
-                echoMode: TextInput.Password
-                onAccepted: registerButton.clicked()
+                height: confirmPasswordField.height
+
+                TextField {
+                    id: confirmPasswordField
+                    width: parent.width
+                    placeholderText: qsTr("Confirm password")
+                    echoMode: dialog.showConfirmPassword ? TextInput.Normal : TextInput.Password
+                    onAccepted: registerButton.clicked()
+                    rightPadding: 40
+                }
+
+                Icon {
+                    anchors.right: parent.right
+                    anchors.rightMargin: Style.smallSpacing
+                    anchors.verticalCenter: parent.verticalCenter
+                    source: dialog.showConfirmPassword ? ResourceManager.icon("view","png") : ResourceManager.icon("hide","png")
+                    implicitWidth: 30
+                    implicitHeight: 30
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: dialog.showConfirmPassword = !dialog.showConfirmPassword
+                    }
+                }
             }
         }
 
@@ -114,6 +185,7 @@ Dialog {
             Button {
                 text: qsTr("Have account? Sign in")
                 onClicked: {
+                    dialog.close()
                     dialog.requestSignIn()
                 }
             }
@@ -133,20 +205,8 @@ Dialog {
                         return
                     }
 
-                    if (passwordField.text === "") {
-                        errorLabel.text = qsTr("Password cannot be empty")
-                        errorLabel.visible = true
-                        return
-                    }
-
                     if (passwordField.text !== confirmPasswordField.text) {
                         errorLabel.text = qsTr("Passwords do not match")
-                        errorLabel.visible = true
-                        return
-                    }
-
-                    if (passwordField.text.length < 4) {
-                        errorLabel.text = qsTr("Password must be at least 4 characters")
                         errorLabel.visible = true
                         return
                     }

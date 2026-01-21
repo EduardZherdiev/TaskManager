@@ -18,7 +18,8 @@ Dialog {
     background: Rectangle {
         radius: Style.largeRadius
         color: Style.surfaceColor
-        border.width: 0
+        border.width: 1
+        border.color: Style.componentOutline
     }
 
     ColumnLayout {
