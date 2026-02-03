@@ -8,6 +8,7 @@
 #include "include/usermodel.h"
 #include "include/openglbarchart.h"
 #include "include/openglbarchart3d.h"
+#include "network/networkclient.h"
 
 int main(int argc, char *argv[])
 {
@@ -37,6 +38,9 @@ int main(int argc, char *argv[])
     FeedbackModel* feedbackModel = new FeedbackModel();
     feedbackModel->setUserModel(userModel);
     
+    // Create NetworkClient
+    NetworkClient* networkClient = new NetworkClient();
+    
     // Register TaskModel as singleton
     qmlRegisterSingletonInstance<TaskModel>("core", 1, 0, "TaskModel", taskModel);
     
@@ -45,6 +49,9 @@ int main(int argc, char *argv[])
     
     // Register FeedbackModel as singleton
     qmlRegisterSingletonInstance<FeedbackModel>("core", 1, 0, "FeedbackModel", feedbackModel);
+    
+    // Register NetworkClient as singleton
+    qmlRegisterSingletonInstance<NetworkClient>("core", 1, 0, "NetworkClient", networkClient);
 
     // Register OpenGL-based bar chart for QML usage
     qmlRegisterType<OpenGLBarChart>("core", 1, 0, "OpenGLBarChart");

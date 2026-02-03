@@ -122,6 +122,35 @@ Rectangle {
                 }
             }
         }
+        
+        // ===== SERVER TEST BUTTON =====
+        Column {
+            spacing: Style.smallSpacing
+            anchors.bottom: parent.bottom
+            Item {
+                height: 20
+            }
+            
+            ServerTestDialog {
+                id: serverTestDialog
+            }
+            
+            Button {
+                text: "Test Server"
+                anchors.horizontalCenter: parent.horizontalCenter
+                onClicked: serverTestDialog.open()
+                background: Rectangle {
+                    color: "#2196F3"
+                    radius: 4
+                }
+                contentItem: Text {
+                    color: Style.textColor
+                    text: parent.text
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                }
+            }
+        }
 
         // ===== SWITCH =====
         Column {

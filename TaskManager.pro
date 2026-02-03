@@ -1,4 +1,4 @@
-QT       += core gui quick quickcontrols2 sql opengl
+QT       += core gui quick quickcontrols2 sql opengl network
 
 CONFIG += c++11
 
@@ -30,7 +30,8 @@ SOURCES += \
         argon2/src/encoding.c \
         argon2/src/thread.c \
         argon2/src/blake2/blake2b.c \
-        argon2/src/ref.c
+        argon2/src/ref.c \
+        network/networkclient.cpp
 
 RESOURCES += qml.qrc
 
@@ -52,7 +53,8 @@ HEADERS += \
     include/userreader.h \
     include/openglbarchart.h \
     include/openglbarchart3d.h \
-    include/keyboardhandler.h
+    include/keyboardhandler.h \
+    network/networkclient.h
 
 # Argon2 include paths
 INCLUDEPATH += $$PWD/argon2/include \
