@@ -103,7 +103,7 @@ bool DBConnectionManager::setUpTables()
     const std::vector<QString> queries = {
         R"(
         CREATE TABLE IF NOT EXISTS Users (
-            Id INTEGER PRIMARY KEY AUTOINCREMENT,
+            Id INTEGER PRIMARY KEY,
             Login TEXT UNIQUE NOT NULL,
             PasswordHash TEXT NOT NULL,
             CHECK (length(trim(Login)) > 0),

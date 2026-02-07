@@ -10,6 +10,60 @@ Rectangle {
     width: parent.width
     height: 86
     color: Style.surfaceColor
+    
+    property bool isSyncing: false
+    property string networkErrorMessage: ""
+
+    Dialog {
+        id: networkErrorDialog
+        modal: true
+        parent: Overlay.overlay
+        anchors.centerIn: Overlay.overlay
+        title: qsTr("Server error")
+        width: 420
+        height: 250
+
+        onOpened: {
+            errorText.text = networkErrorMessage
+            errorText.focus = false
+            okButton.forceActiveFocus()
+        }
+
+        onClosed: {
+            isSyncing = false
+        }
+
+        contentItem: TextEdit {
+            id: errorText
+            color: Style.textColor
+            readOnly: true
+            wrapMode: TextEdit.Wrap
+            padding: 10
+            selectedTextColor: Style.textColor
+            selectionColor: Style.primaryColor
+            selectByMouse: true
+        }
+
+        footer: DialogButtonBox {
+            Button {
+                id: okButton
+                text: qsTr("OK")
+                DialogButtonBox.buttonRole: DialogButtonBox.AcceptRole
+
+                onClicked: {
+                    networkErrorDialog.close()
+                }
+
+                Keys.onReturnPressed: {
+                    networkErrorDialog.close()
+                }
+                Keys.onEscapePressed: {
+                    networkErrorDialog.close()
+                }
+            }
+        }
+    }
+
 
     Rectangle {
         anchors.left: parent.left
@@ -37,9 +91,9 @@ Rectangle {
             ComboBox {
                 id: monthFilter
                 model: [
-                    "All",
-                    "January", "February", "March", "April", "May", "June",
-                    "July", "August", "September", "October", "November", "December"
+                    qsTr("All"),
+                    qsTr("January"), qsTr("February"), qsTr("March"), qsTr("April"), qsTr("May"), qsTr("June"),
+                    qsTr("July"), qsTr("August"), qsTr("September"), qsTr("October"), qsTr("November"), qsTr("December")
                 ]
                 currentIndex: new Date().getMonth() + 1
                 onActivated: function(index) {
@@ -85,8 +139,8 @@ Rectangle {
                     ComboBox {
                         id: sortBy
                         model: TaskModel.showDeleted 
-                            ? ["Created at", "Title", "State", "Updated at", "Deleted at"]
-                            : ["Created at", "Title", "State", "Updated at"]
+                            ? [qsTr("Created at"), qsTr("Title"), qsTr("State"), qsTr("Updated at"), qsTr("Deleted at")]
+                            : [qsTr("Created at"), qsTr("Title"), qsTr("State"), qsTr("Updated at")]
                         currentIndex: TaskModel.sortField
                         onActivated: function(index) {
                             TaskModel.sortField = index
@@ -123,31 +177,50 @@ Rectangle {
             }
         }
         
-        // ===== SERVER TEST BUTTON =====
+        // ===== SYNC BUTTONS =====
         Column {
             spacing: Style.smallSpacing
             anchors.bottom: parent.bottom
             Item {
                 height: 20
             }
-            
-            ServerTestDialog {
-                id: serverTestDialog
-            }
-            
-            Button {
-                text: "Test Server"
-                anchors.horizontalCenter: parent.horizontalCenter
-                onClicked: serverTestDialog.open()
-                background: Rectangle {
-                    color: "#2196F3"
-                    radius: 4
+
+            Row {
+                spacing: Style.smallSpacing
+
+                ImgButton {
+                    imgScale: 1.0
+                    source: ResourceManager.icon("download", "png")
+                    tooltip: qsTr("Download changes from server")
+                    enabled: !isSyncing
+                    onClicked: {
+                        if (UserModel.currentUserId > 0) {
+                            NetworkClient.downloadChangesForUser(UserModel.currentUserId)
+                        } else {
+                            console.log("No user logged in")
+                        }
+                    }
                 }
-                contentItem: Text {
-                    color: Style.textColor
-                    text: parent.text
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
+
+                ImgButton {
+                    imgScale: 1.0
+                    source: ResourceManager.icon("upload", "png")
+                    tooltip: qsTr("Upload changes to server")
+                    enabled: !isSyncing
+                    onClicked: {
+                        if (UserModel.currentUserId > 0) {
+                            NetworkClient.uploadChangesForUser(UserModel.currentUserId)
+                        } else {
+                            console.log("No user logged in")
+                        }
+                    }
+                }
+                
+                BusyIndicator {
+                    visible: isSyncing
+                    running: isSyncing
+                    scale: 0.7
+                    anchors.verticalCenter: parent.verticalCenter
                 }
             }
         }
@@ -194,11 +267,15 @@ Rectangle {
                 onSignOutRequested: {
                     // Call signOut on UserModel - TaskModel will automatically update
                     UserModel.signOut()
+                    NetworkClient.clearAccessToken()
+                    NetworkClient.clearRefreshToken()
                     
                     // Always clear saved credentials on sign out
                     AppSettings.rememberLogin = false
                     AppSettings.savedLogin = ""
                     AppSettings.savedPasswordHash = ""
+                    AppSettings.savedAccessToken = ""
+                    AppSettings.savedRefreshToken = ""
                     
                     // After sign out, open sign-in dialog
                     signInDialog.open()
@@ -232,10 +309,14 @@ Rectangle {
                 onSignOutRequested: {
                     // Call signOut on UserModel
                     UserModel.signOut()
+                    NetworkClient.clearAccessToken()
+                    NetworkClient.clearRefreshToken()
                     // Always clear saved credentials on sign out
                     AppSettings.rememberLogin = false
                     AppSettings.savedLogin = ""
                     AppSettings.savedPasswordHash = ""
+                    AppSettings.savedAccessToken = ""
+                    AppSettings.savedRefreshToken = ""
                     // After sign out, open sign-in dialog
                     signInDialog.open()
                 }
@@ -251,6 +332,8 @@ Rectangle {
                         showError(UserModel.lastError)
                         return
                     }
+
+                    NetworkClient.loginUser(login, password)
                     
                     // TaskModel will automatically update when UserModel.currentUserChanged signal is emitted
                     
@@ -261,6 +344,8 @@ Rectangle {
                     } else {
                         AppSettings.savedLogin = ""
                         AppSettings.savedPasswordHash = ""
+                        AppSettings.savedAccessToken = ""
+                        AppSettings.savedRefreshToken = ""
                     }
                     
                     close()
@@ -272,23 +357,8 @@ Rectangle {
 
             UserRegistrationDialog {
                 id: registrationDialog
-                onRegistrationRequested: function(login, password) {
-                    if (!UserModel.registerUser(login, password)) {
-                        showError(UserModel.lastError)
-                        return
-                    }
-                    
-                    // TaskModel will automatically update when UserModel.currentUserChanged signal is emitted
-                    
-                    // Save credentials if remember is enabled
-                    if (AppSettings.rememberLogin) {
-                        AppSettings.savedLogin = login
-                        AppSettings.savedPasswordHash = UserModel.hashPassword(password)
-                    }
-                    
-                    close()
-                }
                 onRequestSignIn: {
+                    close()
                     signInDialog.open()
                 }
             }
@@ -325,5 +395,62 @@ Rectangle {
 
     function openSignInDialog() {
         signInDialog.open()
+    }
+
+    function showNetworkError(msg) {
+        if (!msg || msg.length === 0) {
+            return
+        }
+        networkErrorMessage = msg
+        networkErrorDialog.open()
+    }
+    
+    // Handle sync signals
+    Connections {
+        target: NetworkClient
+        
+        function onSyncStarted() {
+            isSyncing = true
+            console.log("Sync started...")
+        }
+        
+        function onSyncCompleted(message) {
+            isSyncing = false
+            console.log("Sync completed:", message)
+        }
+        
+        function onSyncFailed(error) {
+            isSyncing = false
+            console.log("Sync failed:", error)
+            showNetworkError(error)
+        }
+    }
+
+    Connections {
+        target: NetworkClient
+
+        function onError(message) {
+            if (registrationDialog.visible) {
+                registrationDialog.showError(message)
+                return
+            }
+            showNetworkError(message)
+        }
+
+        function onAccessTokenChanged(token) {
+            if (AppSettings.rememberLogin) {
+                AppSettings.savedAccessToken = token
+            } else {
+                AppSettings.savedAccessToken = ""
+            }
+        }
+
+        function onRefreshTokenChanged(token) {
+            if (AppSettings.rememberLogin) {
+                AppSettings.savedRefreshToken = token
+            } else {
+                AppSettings.savedRefreshToken = ""
+            }
+        }
     }
 }

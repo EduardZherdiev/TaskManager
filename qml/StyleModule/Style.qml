@@ -10,7 +10,7 @@ QtObject {
     readonly property color primaryColor: isDarkTheme ? "#6200EE" : "#BB86FC"
     readonly property color primaryVariantColor: "#3700B3"
     readonly property color secondaryColor: "#03DAC6"
-    readonly property color errorColor: isDarkTheme ? "#c92222" : "#E57373"
+    readonly property color errorColor: isDarkTheme ? "#8033b5" : "#fc9797"
 
     readonly property color backgroundColor: isDarkTheme ? "#121212" : "#FFFFFF"
     readonly property color surfaceColor: isDarkTheme ? "#1E1E1E" : "#F7F7F7"
@@ -41,8 +41,8 @@ QtObject {
     readonly property color primaryPressed: isDarkTheme ? "#4A00C2" : "#9A67EA"
 
     /* ====== ERROR BUTTON ====== */
-    readonly property color errorHover: isDarkTheme ? "#d62929" : "#CF6679"
-    readonly property color errorPressed: isDarkTheme ? "#e62727" : "#D32F2F"
+    readonly property color errorHover: isDarkTheme ? "#953dd1" : "#e68a8a"
+    readonly property color errorPressed: isDarkTheme ? "#a048db" : "#D32F2F"
 
     /* ====== TASK STATUS COLORS ====== */
     readonly property color statusCompleted: "#4CAF50"

@@ -1,4 +1,6 @@
 #include "include/usermodel.h"
+#include "include/userregistrationhandler.h"
+#include "network/networkclient.h"
 #include <QQmlEngine>
 #include <QDebug>
 #include <argon2.h>
@@ -143,14 +145,14 @@ bool UserModel::signIn(const QString& login, const QString& password)
     qDebug() << "Query result:" << (int)res.first << "rows found:" << res.second.size();
     
     if (res.first != DBTypes::DBResult::OK || res.second.empty()) {
-        setError("User not found or password is incorrect");
+        setError(tr("User not found or password is incorrect"));
         qDebug() << "Sign in failed:" << m_lastError;
         return false;
     }
 
     const auto &row = res.second.front();
     if (row.size() < 3) {
-        setError("Invalid user record");
+        setError(tr("Invalid user record"));
         return false;
     }
 
@@ -172,13 +174,13 @@ bool UserModel::signInWithHash(const QString& login, const QString& passwordHash
                                                     args);
 
     if (res.first != DBTypes::DBResult::OK || res.second.empty()) {
-        setError("User not found or password is incorrect");
+        setError(tr("User not found or password is incorrect"));
         return false;
     }
 
     const auto &row = res.second.front();
     if (row.size() < 3) {
-        setError("Invalid user record");
+        setError(tr("Invalid user record"));
         return false;
     }
 
@@ -192,7 +194,7 @@ bool UserModel::registerUser(const QString& login, const QString& password)
 {
     setError("");
     if (login.trimmed().isEmpty()) {
-        setError("Login cannot be empty");
+        setError(tr("Login cannot be empty"));
         return false;
     }
     
@@ -203,23 +205,32 @@ bool UserModel::registerUser(const QString& login, const QString& password)
         return false;
     }
 
-    // Check if login exists
-    QVariantList args;
-    args << login;
-    auto check = DBProcessing::instance().requestTableDataWhere(DBTypes::DBTables::Users,
-                                                      "Login = ?",
-                                                      args);
-    if (check.first == DBTypes::DBResult::OK && !check.second.empty()) {
-        setError("User already exists");
+    // Check server connection by testing health
+    if (!m_networkClient) {
+        setError(tr("Network client not available. Please check your connection."));
         return false;
     }
 
+    // Check if login exists in local database
+    QVariantList args;
+    args << login;
+    auto localCheck = DBProcessing::instance().requestTableDataWhere(DBTypes::DBTables::Users,
+                                                      "Login = ?",
+                                                      args);
+    if (localCheck.first == DBTypes::DBResult::OK && !localCheck.second.empty()) {
+        setError(tr("User already exists locally"));
+        return false;
+    }
+
+    // Hash password
     QString passwordHash = hashPassword(password);
+    
+    // Add to local database
     QVariantList data;
-    data << login << hashPassword(password);
+    data << QVariant() << login << passwordHash;
     auto add = DBProcessing::instance().requestAddRow(DBTypes::DBTables::Users, data);
     if (add.first != DBTypes::DBResult::OK) {
-        setError("Failed to register user");
+        setError(tr("Failed to register user locally"));
         return false;
     }
 
@@ -227,6 +238,11 @@ bool UserModel::registerUser(const QString& login, const QString& password)
     m_currentUserId = add.second;
     m_currentUserLogin = login;
     emit currentUserChanged();
+    
+    // Send to server asynchronously (fire and forget for now)
+    // In future, this should be handled by UserRegistrationHandler
+    m_networkClient->registerUser(login, password);
+    
     return true;
 }
 
@@ -241,7 +257,7 @@ bool UserModel::checkPassword(const QString& password)
 {
     setError("");
     if (m_currentUserId < 0) {
-        setError("Not signed in");
+        setError(tr("Not signed in"));
         return false;
     }
 
@@ -254,20 +270,20 @@ bool UserModel::checkPassword(const QString& password)
                                                         "Id = ?",
                                                         userArgs);
     if (userRes.first != DBTypes::DBResult::OK || userRes.second.empty()) {
-        setError("User not found");
+        setError(tr("User not found"));
         return false;
     }
 
     const auto &userRow = userRes.second.front();
     if (userRow.size() < 3) {
-        setError("Invalid user record");
+        setError(tr("Invalid user record"));
         return false;
     }
 
     QString storedPasswordHash = userRow[3].toString();
     QString passwordHash = hashPassword(password);
     if (storedPasswordHash != passwordHash) {
-        setError("Current password is incorrect");
+        setError(tr("Current password is incorrect"));
         return false;
     }
 
@@ -278,7 +294,7 @@ bool UserModel::updateUser(const QString& newLogin, const QString& oldPassword, 
 {
     setError("");
     if (m_currentUserId < 0) {
-        setError("Not signed in");
+        setError(tr("Not signed in"));
         return false;
     }
 
@@ -299,7 +315,7 @@ bool UserModel::updateUser(const QString& newLogin, const QString& oldPassword, 
         if (check.first == DBTypes::DBResult::OK && !check.second.empty()) {
             const auto &row = check.second.front();
             if (row.size() >= 2 && row[1].toInt() != m_currentUserId) {
-                setError("Login already taken");
+                setError(tr("Login already taken"));
                 return false;
             }
         }
@@ -327,12 +343,12 @@ bool UserModel::updateUser(const QString& newLogin, const QString& oldPassword, 
                                                            "Id = ?",
                                                            getPasswordArgs);
         if (passRes.first != DBTypes::DBResult::OK || passRes.second.empty()) {
-            setError("Failed to retrieve user data");
+            setError(tr("Failed to retrieve user data"));
             return false;
         }
         const auto &row = passRes.second.front();
         if (row.size() < 3) {
-            setError("Invalid user record");
+            setError(tr("Invalid user record"));
             return false;
         }
         QString currentPassword = row[2].toString();
@@ -342,7 +358,7 @@ bool UserModel::updateUser(const QString& newLogin, const QString& oldPassword, 
 
     auto result = DBProcessing::instance().requestUpdate(DBTypes::DBTables::Users, columns, values);
     if (result != DBTypes::DBResult::OK) {
-        setError("Failed to update user");
+        setError(tr("Failed to update user"));
         return false;
     }
 
@@ -356,7 +372,7 @@ QString UserModel::validatePassword(const QString& password)
 {
     // Minimum 12 characters
     if (password.length() < 12) {
-        return "Password must be at least 12 characters long";
+        return tr("Password must be at least 12 characters long");
     }
 
     bool hasLower = false;
@@ -374,16 +390,16 @@ QString UserModel::validatePassword(const QString& password)
     }
 
     if (!hasLower) {
-        return "Password must contain lowercase letters (a-z)";
+        return tr("Password must contain lowercase letters (a-z)");
     }
     if (!hasUpper) {
-        return "Password must contain uppercase letters (A-Z)";
+        return tr("Password must contain uppercase letters (A-Z)");
     }
     if (!hasDigit) {
-        return "Password must contain digits (0-9)";
+        return tr("Password must contain digits (0-9)");
     }
     if (!hasSpecial) {
-        return "Password must contain special characters (!@#$%^&*())";
+        return tr("Password must contain special characters (!@#$%^&*())");
     }
 
     return ""; // Empty string means password is valid
@@ -419,3 +435,40 @@ QString UserModel::generatePassword()
 
     return password;
 }
+
+void UserModel::setNetworkClient(NetworkClient* client)
+{
+    m_networkClient = client;
+}
+
+void UserModel::setRegistrationHandler(UserRegistrationHandler* handler)
+{
+    m_registrationHandler = handler;
+    if (m_registrationHandler) {
+        connect(m_registrationHandler, &UserRegistrationHandler::registrationSucceeded,
+                this, [this](int userId, const QString& login) {
+            // Auto sign-in the user after successful registration
+            m_currentUserId = userId;
+            m_currentUserLogin = login;
+            emit currentUserChanged();
+            emit serverRegistrationSucceeded(userId);
+        });
+        connect(m_registrationHandler, &UserRegistrationHandler::registrationFailed,
+                this, [this](const QString& error) {
+            setError(error);
+            emit serverRegistrationFailed(error);
+        });
+    }
+}
+
+void UserModel::registerUserWithServer(const QString& login, const QString& password)
+{
+    if (!m_registrationHandler) {
+        setError(tr("Registration handler not initialized"));
+        emit serverRegistrationFailed(tr("Registration handler not initialized"));
+        return;
+    }
+    
+    m_registrationHandler->registerUser(login, password);
+}
+

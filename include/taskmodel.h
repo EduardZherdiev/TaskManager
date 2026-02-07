@@ -1,5 +1,6 @@
 #pragma once
 #include <QAbstractListModel>
+#include <QJsonArray>
 #include "task.h"
 #include "taskreader.h"
 
@@ -52,6 +53,8 @@ public:
     Q_INVOKABLE bool restoreTask(int taskId);
     Q_INVOKABLE void reloadTasks();
     Q_INVOKABLE void setFilterMonth(int month, int year);
+
+    void applyRemoteTasks(const QJsonArray &tasks);
 
 signals:
     void showDeletedChanged();

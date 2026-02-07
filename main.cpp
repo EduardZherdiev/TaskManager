@@ -6,6 +6,7 @@
 #include "include/taskmodel.h"
 #include "include/Feedbackmodel.h"
 #include "include/usermodel.h"
+#include "include/userregistrationhandler.h"
 #include "include/openglbarchart.h"
 #include "include/openglbarchart3d.h"
 #include "network/networkclient.h"
@@ -41,6 +42,18 @@ int main(int argc, char *argv[])
     // Create NetworkClient
     NetworkClient* networkClient = new NetworkClient();
     
+    // Set NetworkClient in UserModel
+    userModel->setNetworkClient(networkClient);
+
+    QObject::connect(networkClient, &NetworkClient::tasksReceived,
+                     taskModel, &TaskModel::applyRemoteTasks);
+    
+    // Create UserRegistrationHandler for server-based registration
+    UserRegistrationHandler* registrationHandler = new UserRegistrationHandler(networkClient);
+    
+    // Set registration handler in UserModel
+    userModel->setRegistrationHandler(registrationHandler);
+    
     // Register TaskModel as singleton
     qmlRegisterSingletonInstance<TaskModel>("core", 1, 0, "TaskModel", taskModel);
     
@@ -52,6 +65,9 @@ int main(int argc, char *argv[])
     
     // Register NetworkClient as singleton
     qmlRegisterSingletonInstance<NetworkClient>("core", 1, 0, "NetworkClient", networkClient);
+    
+    // Register UserRegistrationHandler as singleton
+    qmlRegisterSingletonInstance<UserRegistrationHandler>("core", 1, 0, "UserRegistrationHandler", registrationHandler);
 
     // Register OpenGL-based bar chart for QML usage
     qmlRegisterType<OpenGLBarChart>("core", 1, 0, "OpenGLBarChart");

@@ -26,12 +26,20 @@ ApplicationWindow {
         if (AppSettings.rememberLogin && AppSettings.savedLogin !== "" && AppSettings.savedPasswordHash !== "") {
             // Use signInWithHash for auto-login since we already have the hash
             if (UserModel.signInWithHash(AppSettings.savedLogin, AppSettings.savedPasswordHash)) {
+                if (AppSettings.savedAccessToken !== "") {
+                    NetworkClient.setAccessToken(AppSettings.savedAccessToken)
+                }
+                if (AppSettings.savedRefreshToken !== "") {
+                    NetworkClient.setRefreshToken(AppSettings.savedRefreshToken)
+                }
                 // TaskModel will automatically update when UserModel.currentUserChanged signal is emitted
                 return
             } else {
                 console.log("Auto-login failed, clearing saved credentials")
                 AppSettings.savedLogin = ""
                 AppSettings.savedPasswordHash = ""
+                AppSettings.savedAccessToken = ""
+                AppSettings.savedRefreshToken = ""
             }
         }
         
@@ -53,22 +61,8 @@ ApplicationWindow {
     Body{}
 
     // UserSignInDialog is now handled in Header component
+    // UserRegistrationDialog is now handled in Header component with internal signal connections
     
-    UserRegistrationDialog {
-        id: registrationDialog
-        onRegistrationRequested: function(login, password) {
-            if (!UserModel.registerUser(login, password)) {
-                showError(UserModel.lastError)
-                return
-            }
-            close()
-        }
-        onRequestSignIn: {
-            close()
-            headerComponent.openSignInDialog()
-        }
-    }
-
     footer: Footer{}
 
     // Item {

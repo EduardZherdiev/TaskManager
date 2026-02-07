@@ -5,8 +5,8 @@ using namespace DBTypes;
 
 namespace {
 static const std::map<std::string, std::string> tablesMapping = {
-    {"Users", "Login, PasswordHash"},
-    {"Tasks", "UserId, Title, Description, State, CreatedAt, UpdatedAt, DeletedAt"},
+    {"Users", "Id, Login, PasswordHash"},
+    {"Tasks", "Id, UserId, Title, Description, State, CreatedAt, UpdatedAt, DeletedAt"},
     {"Feedbacks", "UserId, Rate, Description, CreatedAt"}
 };
 }

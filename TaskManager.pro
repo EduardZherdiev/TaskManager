@@ -31,7 +31,9 @@ SOURCES += \
         argon2/src/thread.c \
         argon2/src/blake2/blake2b.c \
         argon2/src/ref.c \
-        network/networkclient.cpp
+        network/networkclient.cpp \
+        network/syncmanager.cpp \
+        src/userregistrationhandler.cpp
 
 RESOURCES += qml.qrc
 
@@ -54,7 +56,9 @@ HEADERS += \
     include/openglbarchart.h \
     include/openglbarchart3d.h \
     include/keyboardhandler.h \
-    network/networkclient.h
+    network/networkclient.h \
+    network/syncmanager.h \
+    include/userregistrationhandler.h
 
 # Argon2 include paths
 INCLUDEPATH += $$PWD/argon2/include \

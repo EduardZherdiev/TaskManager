@@ -64,7 +64,7 @@ Column {
             Label {
                 width: columnWidth(0, parent.width)
                 height: parent.height
-                text: "Title"
+                text: qsTr("Title")
                 color: Style.textColor
                 font.bold: true
                 horizontalAlignment: Text.AlignHCenter
@@ -74,7 +74,7 @@ Column {
             Label {
                 width: columnWidth(1, parent.width)
                 height: parent.height
-                text: "Created"
+                text: qsTr("Created")
                 color: Style.textColor
                 font.bold: true
                 horizontalAlignment: Text.AlignHCenter
@@ -84,7 +84,7 @@ Column {
             Label {
                 width: columnWidth(2, parent.width)
                 height: parent.height
-                text: "Updated"
+                text: qsTr("Updated")
                 color: Style.textColor
                 font.bold: true
                 horizontalAlignment: Text.AlignHCenter
@@ -94,7 +94,7 @@ Column {
             Label {
                 width: columnWidth(3, parent.width)
                 height: parent.height
-                text: "Deleted"
+                text: qsTr("Deleted")
                 color: Style.textColor
                 font.bold: true
                 horizontalAlignment: Text.AlignHCenter
@@ -105,7 +105,7 @@ Column {
             Label {
                 width: columnWidth(4, parent.width)
                 height: parent.height
-                text: "State"
+                text: qsTr("State")
                 color: Style.textColor
                 font.bold: true
                 horizontalAlignment: Text.AlignHCenter
@@ -189,7 +189,7 @@ Column {
                             maxCount = model.count
                         return Math.min(idx, maxCount - 1)
                     }
-                    model: ["Active", "Completed", "Archived"]
+                    model: [qsTr("Active"), qsTr("Completed"), qsTr("Archived")]
                     onActivated: function(index) {
                         if (taskState !== index) {
                             TaskModel.updateTask(id, title, description, index)

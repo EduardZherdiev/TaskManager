@@ -12,13 +12,15 @@ Dialog {
     anchors.centerIn: Overlay.overlay
     closePolicy: Dialog.NoAutoClose
     padding: Style.mediumSpacing
-    width: 350
+    width: 520
 
     property bool showPassword: false
     property bool showConfirmPassword: false
     property bool isLoading: false
 
-    signal requestSignIn()
+    signal registrationStarted()
+    signal registrationSucceeded()
+    signal registrationFailed(string error)
 
     background: Rectangle {
         radius: Style.largeRadius
@@ -33,7 +35,7 @@ Dialog {
 
         Label {
             Layout.fillWidth: true
-            text: qsTr("User Registration")
+            text: qsTr("Server Registration")
             font.pixelSize: Style.largeFont
             font.bold: true
             color: Style.textColor
@@ -49,7 +51,6 @@ Dialog {
         Column {
             Layout.fillWidth: true
             spacing: Style.smallSpacing
-            enabled: !dialog.isLoading
 
             Label {
                 text: qsTr("Login")
@@ -61,44 +62,19 @@ Dialog {
                 id: loginField
                 width: parent.width
                 placeholderText: qsTr("Enter login")
+                enabled: !dialog.isLoading
                 onAccepted: passwordField.forceActiveFocus()
             }
         }
 
         Column {
             Layout.fillWidth: true
-            width: parent.width
             spacing: Style.smallSpacing
-            enabled: !dialog.isLoading
 
-            RowLayout {
-                width: parent.width
-                spacing: Style.smallSpacing
-
-                Label {
-                    text: qsTr("Password")
-                    color: Style.textColor
-                    font.bold: true
-                }
-
-                Item { Layout.fillWidth: true }
-
-                Button {
-                    text: qsTr("Generate") + " 📋"
-                    flat: true
-                    hoverEnabled: true
-                    ToolTip.visible: hovered
-                    ToolTip.text: qsTr("Generates a password and copies it")
-                    onClicked: {
-                        passwordField.text = UserModel.generatePassword()
-                        confirmPasswordField.text = passwordField.text
-                        passwordField.selectAll()
-                        if (Qt.application && Qt.application.clipboard) {
-                            Qt.application.clipboard.setText(passwordField.text)
-                        }
-                        errorText.text = ""
-                    }
-                }
+            Label {
+                text: qsTr("Password")
+                color: Style.textColor
+                font.bold: true
             }
 
             Item {
@@ -110,6 +86,7 @@ Dialog {
                     width: parent.width
                     placeholderText: qsTr("Min 12 chars: a-z, A-Z, 0-9, !@#$%^&*()")
                     echoMode: dialog.showPassword ? TextInput.Normal : TextInput.Password
+                    enabled: !dialog.isLoading
                     onAccepted: confirmPasswordField.forceActiveFocus()
                     rightPadding: 40
                 }
@@ -127,14 +104,11 @@ Dialog {
                     }
                 }
             }
-
         }
 
         Column {
             Layout.fillWidth: true
-            width: parent.width
             spacing: Style.smallSpacing
-            enabled: !dialog.isLoading
 
             Label {
                 text: qsTr("Confirm Password")
@@ -151,6 +125,7 @@ Dialog {
                     width: parent.width
                     placeholderText: qsTr("Confirm password")
                     echoMode: dialog.showConfirmPassword ? TextInput.Normal : TextInput.Password
+                    enabled: !dialog.isLoading
                     onAccepted: registerButton.clicked()
                     rightPadding: 40
                 }
@@ -170,32 +145,10 @@ Dialog {
             }
         }
 
-        // Loading indicator
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 50
-            color: "transparent"
-            visible: dialog.isLoading
-
-            RowLayout {
-                anchors.centerIn: parent
-                spacing: Style.mediumSpacing
-
-                BusyIndicator {
-                    running: dialog.isLoading
-                }
-
-                Label {
-                    text: qsTr("Registering...")
-                    color: Style.textColor
-                }
-            }
-        }
-
         ScrollView {
             id: errorScroll
             Layout.fillWidth: true
-            Layout.preferredHeight: 30
+            Layout.preferredHeight: 70
             visible: errorText.text.length > 0
             clip: true
 
@@ -210,18 +163,24 @@ Dialog {
             }
         }
 
+        BusyIndicator {
+            id: loadingIndicator
+            Layout.alignment: Qt.AlignHCenter
+            visible: dialog.isLoading
+            running: visible
+        }
+
         Item { Layout.fillHeight: true }
 
         RowLayout {
             Layout.fillWidth: true
             spacing: Style.mediumSpacing
-            enabled: !dialog.isLoading
 
             Button {
-                text: qsTr("Have account? Sign in")
+                text: qsTr("Cancel")
+                enabled: !dialog.isLoading
                 onClicked: {
                     dialog.close()
-                    dialog.requestSignIn()
                 }
             }
 
@@ -243,8 +202,8 @@ Dialog {
                         return
                     }
 
-                    // Start registration with server
                     dialog.isLoading = true
+                    dialog.registrationStarted()
                     UserModel.registerUserWithServer(loginField.text.trim(), passwordField.text)
                 }
             }
@@ -266,20 +225,7 @@ Dialog {
     }
 
     function showSuccess() {
-        dialog.close()
         dialog.isLoading = false
-    }
-
-    // Connect to UserModel signals
-    Connections {
-        target: UserModel
-        
-        function onServerRegistrationSucceeded() {
-            showSuccess()
-        }
-        
-        function onServerRegistrationFailed(error) {
-            showError(error)
-        }
+        dialog.close()
     }
 }

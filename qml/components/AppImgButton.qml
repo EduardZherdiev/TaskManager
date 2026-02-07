@@ -8,6 +8,7 @@ AppButton {
     height: 40
 
     property double imgScale : 0.9
+    property string tooltip: ""
 
     property url source: ""
 
@@ -17,5 +18,9 @@ AppButton {
         source: btn.source
         invertColors: false
     }
+
+    ToolTip.visible: hovered && tooltip !== ""
+    ToolTip.text: tooltip
+    ToolTip.delay: 500
 
 }

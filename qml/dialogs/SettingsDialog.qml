@@ -10,7 +10,7 @@ Dialog {
     id: dialog
     modal: true
     width: 400
-    height: 500
+    height: 450
     parent: Overlay.overlay
     anchors.centerIn: Overlay.overlay
     closePolicy: Dialog.NoAutoClose
@@ -40,31 +40,6 @@ Dialog {
             horizontalAlignment: Text.AlignHCenter
         }
 
-        // ===== STORAGE =====
-        Column {
-            spacing: Style.smallSpacing
-
-            Label {
-                text: qsTr("Storage")
-                font.bold: true
-                color: Style.textColor
-            }
-
-            Row {
-                spacing: Style.mediumSpacing
-                RadioButton {
-                    text: qsTr("Save locally")
-                    checked: AppSettings.storageMode === 0
-                    onClicked: AppSettings.storageMode = 0
-                }
-                RadioButton {
-                    text: qsTr("Save globally")
-                    checked: AppSettings.storageMode === 1
-                    onClicked: AppSettings.storageMode = 1
-                }
-            }
-        }
-
         // ===== LANGUAGE =====
         Column {
             spacing: Style.smallSpacing
@@ -78,7 +53,7 @@ Dialog {
 
             ComboBox {
                 width: parent.width
-                model: ["English", "Українська", "Deutsch"]
+                model: [qsTr("English"), qsTr("Українська"), qsTr("Deutsch")]
                 currentIndex: AppSettings.language
                 onActivated: function (index) {
                     AppSettings.language = index

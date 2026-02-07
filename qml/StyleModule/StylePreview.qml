@@ -8,7 +8,7 @@ Window {
     visible: true
     width: 560
     height: 760
-    title: "Style preview"
+    title: qsTr("Style preview")
 
     Rectangle {
         anchors.fill: parent
@@ -26,68 +26,68 @@ Window {
 
                 /* ===== HEADER ===== */
                 Text {
-                    text: "STYLE PREVIEW"
+                    text: qsTr("STYLE PREVIEW")
                     font.pixelSize: 24
                     color: Style.textColor
                 }
 
                 /* ===== COLORS ===== */
-                SectionTitle { text: "COLORS" }
+                SectionTitle { text: qsTr("COLORS") }
 
-                ColorRow { name: "Primary";      color: Style.primaryColor }
-                ColorRow { name: "Primary Var."; color: Style.primaryVariantColor }
-                ColorRow { name: "Secondary";    color: Style.secondaryColor }
-                ColorRow { name: "Error";        color: Style.errorColor }
-                ColorRow { name: "Background";  color: Style.backgroundColor }
-                ColorRow { name: "Surface";      color: Style.surfaceColor }
-                ColorRow { name: "Text";         color: Style.textColor }
-                ColorRow { name: "Text Sec.";    color: Style.textSecondaryColor }
+                ColorRow { name: qsTr("Primary");      color: Style.primaryColor }
+                ColorRow { name: qsTr("Primary Var."); color: Style.primaryVariantColor }
+                ColorRow { name: qsTr("Secondary");    color: Style.secondaryColor }
+                ColorRow { name: qsTr("Error");        color: Style.errorColor }
+                ColorRow { name: qsTr("Background");  color: Style.backgroundColor }
+                ColorRow { name: qsTr("Surface");      color: Style.surfaceColor }
+                ColorRow { name: qsTr("Text");         color: Style.textColor }
+                ColorRow { name: qsTr("Text Sec.");    color: Style.textSecondaryColor }
 
                 /* ===== OPACITY ===== */
-                SectionTitle { text: "OPACITY" }
+                SectionTitle { text: qsTr("OPACITY") }
 
-                OpacityRow { label: "Default";   value: Style.defaultOpacity }
-                OpacityRow { label: "Emphasis";  value: Style.emphasisOpacity }
-                OpacityRow { label: "Secondary"; value: Style.secondaryOpacity }
-                OpacityRow { label: "Disabled";  value: Style.disabledOpacity }
+                OpacityRow { label: qsTr("Default");   value: Style.defaultOpacity }
+                OpacityRow { label: qsTr("Emphasis");  value: Style.emphasisOpacity }
+                OpacityRow { label: qsTr("Secondary"); value: Style.secondaryOpacity }
+                OpacityRow { label: qsTr("Disabled");  value: Style.disabledOpacity }
 
                 /* ===== COMPONENT STATES ===== */
-                SectionTitle { text: "COMPONENT STATES" }
+                SectionTitle { text: qsTr("COMPONENT STATES") }
 
                 Row {
                     spacing: Style.mediumSpacing
 
                     PreviewButton {
-                        text: "Normal"
+                        text: qsTr("Normal")
                         bgColor: Style.componentBackground
                         textColor: Style.componentText
                     }
 
                     PreviewButton {
-                        text: "Hover"
+                        text: qsTr("Hover")
                         bgColor: Style.componentHover
                         textColor: Style.componentText
                     }
 
                     PreviewButton {
-                        text: "Pressed"
+                        text: qsTr("Pressed")
                         bgColor: Style.componentPressed
                         textColor: Style.componentText
                     }
 
                     PreviewButton {
-                        text: "Disabled"
+                        text: qsTr("Disabled")
                         bgColor: Style.componentDisabled
                         textColor: Style.componentDisabledText
                     }
                 }
 
                 /* ===== SPACING ===== */
-                SectionTitle { text: "SPACING" }
+                SectionTitle { text: qsTr("SPACING") }
 
-                SpacingRow { label: "Small";  value: Style.smallSpacing }
-                SpacingRow { label: "Medium"; value: Style.mediumSpacing }
-                SpacingRow { label: "Big";    value: Style.bigSpacing }
+                SpacingRow { label: qsTr("Small");  value: Style.smallSpacing }
+                SpacingRow { label: qsTr("Medium"); value: Style.mediumSpacing }
+                SpacingRow { label: qsTr("Big");    value: Style.bigSpacing }
             }
         }
     }

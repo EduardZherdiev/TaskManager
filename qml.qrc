@@ -62,6 +62,8 @@
         <file>qml/pages/TasksPage.qml</file>
         <file>qml/pages/ChartsPage.qml</file>
         <file>assets/icons/hide.png</file>
-        <file>qml/dialogs/ServerTestDialog.qml</file>
+        <file>assets/icons/download.png</file>
+        <file>assets/icons/export.png</file>
+        <file>assets/icons/upload.png</file>
     </qresource>
 </RCC>

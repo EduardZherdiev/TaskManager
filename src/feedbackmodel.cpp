@@ -117,7 +117,7 @@ QVariantMap FeedbackModel::getUserFeedback()
     
     int userId = getCurrentUserId();
     if (userId < 0) {
-        setError("No user signed in");
+        setError(tr("No user signed in"));
         return result;
     }
 
@@ -147,12 +147,12 @@ bool FeedbackModel::saveFeedback(int rate, const QString& description)
 {
     int userId = getCurrentUserId();
     if (userId < 0) {
-        setError("No user signed in");
+        setError(tr("No user signed in"));
         return false;
     }
 
     if (rate < 1 || rate > 5) {
-        setError("Rating must be between 1 and 5");
+        setError(tr("Rating must be between 1 and 5"));
         return false;
     }
 
@@ -181,12 +181,12 @@ bool FeedbackModel::saveFeedback(int rate, const QString& description)
             return true;
         }
         
-        setError("Failed to update feedback");
+        setError(tr("Failed to update feedback"));
         return false;
     } else {
         // Create new feedback
         QVariantList data;
-        data << userId << rate << description << QDateTime::currentDateTime();
+        data << userId << rate << description << QDateTime::currentDateTimeUtc();
 
         auto [result, feedbackId] = DBProcessing::instance().requestAddRow(DBTypes::DBTables::Feedbacks, data);
 
@@ -195,7 +195,7 @@ bool FeedbackModel::saveFeedback(int rate, const QString& description)
             return true;
         }
 
-        setError("Failed to create feedback");
+        setError(tr("Failed to create feedback"));
         return false;
     }
 }

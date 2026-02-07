@@ -26,13 +26,15 @@ Dialog {
         anchors.fill: parent
         spacing: Style.mediumSpacing
 
-        Label {
+        TextEdit {
             Layout.fillWidth: true
             text: qsTr("Your Feedback")
             font.pixelSize: Style.largeFont
             font.bold: true
             color: Style.textColor
-            horizontalAlignment: Text.AlignHCenter
+            readOnly: true
+            selectByMouse: true
+            wrapMode: TextEdit.Wrap
         }
 
         Rectangle {
@@ -106,7 +108,7 @@ Dialog {
             }
         }
 
-        Label {
+        Text {
             id: errorLabel
             Layout.fillWidth: true
             color: Style.errorColor

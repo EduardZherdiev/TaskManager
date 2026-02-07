@@ -12,6 +12,10 @@ Dialog {
     anchors.centerIn: Overlay.overlay
     closePolicy: Dialog.NoAutoClose
 
+    onOpened: {
+        deleteButton.forceActiveFocus()
+    }
+
     property string taskTitle: ""
     property int taskId: -1
 
@@ -63,6 +67,7 @@ Dialog {
             }
 
             Button {
+                id: deleteButton
                 text: qsTr("Delete")
                 width: 120
                 type: 2

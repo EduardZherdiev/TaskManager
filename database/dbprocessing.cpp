@@ -74,26 +74,26 @@ void DBProcessing::insertTestData()
     int bobId = 0;
     int carolId = 0;
 
-    aliceId = dbManager.insertRow("Users", {{"alice"}, {hashPassword("alice")}}).second;
-    bobId = dbManager.insertRow("Users", {{"bob"}, {hashPassword("bob")}}).second;
-    carolId = dbManager.insertRow("Users", {{"carol"}, {hashPassword("carol")}}).second;
+    aliceId = dbManager.insertRow("Users", {QVariant(), {"alice"}, {hashPassword("alice")}}).second;
+    bobId = dbManager.insertRow("Users", {QVariant(), {"bob"}, {hashPassword("bob")}}).second;
+    carolId = dbManager.insertRow("Users", {QVariant(), {"carol"}, {hashPassword("carol")}}).second;
 
     // Create tasks for users
     auto insertTask = [&](int userId, const QString& title, const QString& desc, int state, const QDateTime& createdAt, const QDateTime& updatedAt) {
-        return dbManager.insertRow("Tasks", {QVariant(userId), QVariant(title), QVariant(desc), QVariant(state), QVariant(createdAt.toString(Qt::ISODate)), QVariant(updatedAt.isValid() ? updatedAt.toString(Qt::ISODate) : QString()), QVariant()}).second;
+        return dbManager.insertRow("Tasks", {QVariant(), QVariant(userId), QVariant(title), QVariant(desc), QVariant(state), QVariant(createdAt.toString(Qt::ISODate)), QVariant(updatedAt.isValid() ? updatedAt.toString(Qt::ISODate) : QString()), QVariant()}).second;
     };
 
-    insertTask(aliceId, "Buy groceries", "Milk, Bread, Eggs", 0, QDateTime::currentDateTime(), QDateTime());
-    insertTask(bobId, "Finish report", "Monthly sales report", 0, QDateTime::currentDateTime().addDays(-2), QDateTime::currentDateTime());
-    insertTask(carolId, "Plan trip", "Book flights and hotels", 1, QDateTime::currentDateTime().addDays(-10), QDateTime::currentDateTime().addDays(-1));
+    insertTask(aliceId, "Buy groceries", "Milk, Bread, Eggs", 0, QDateTime::currentDateTimeUtc(), QDateTime());
+    insertTask(bobId, "Finish report", "Monthly sales report", 0, QDateTime::currentDateTimeUtc().addDays(-2), QDateTime::currentDateTimeUtc());
+    insertTask(carolId, "Plan trip", "Book flights and hotels", 1, QDateTime::currentDateTimeUtc().addDays(-10), QDateTime::currentDateTimeUtc().addDays(-1));
 
     // Add 200 tasks for bob
     for (int i = 1; i <= 200; ++i) {
         QString title = QString("Task %1 for Bob").arg(i);
         QString description = QString("Description for task %1. This is a sample task with some content.").arg(i);
         int state = i % 3;  // 0=Active, 1=Completed, 2=Archived
-        QDateTime created = QDateTime::currentDateTime().addDays(-(200 - i));
-        QDateTime updated = (state == 1) ? QDateTime::currentDateTime().addDays(-(200 - i) + 1) : QDateTime();
+        QDateTime created = QDateTime::currentDateTimeUtc().addDays(-(200 - i));
+        QDateTime updated = (state == 1) ? QDateTime::currentDateTimeUtc().addDays(-(200 - i) + 1) : QDateTime();
         insertTask(bobId, title, description, state, created, updated);
     }
 
@@ -102,9 +102,9 @@ void DBProcessing::insertTestData()
         return dbManager.insertRow("Feedbacks", {QVariant(userId), QVariant(rate), QVariant(desc), QVariant(createdAt.toString(Qt::ISODate))}).second;
     };
 
-    insertFeedback(aliceId, 5, "Great service", QDateTime::currentDateTime());
-    insertFeedback(bobId, 4, "Good support", QDateTime::currentDateTime().addDays(-3));
-    insertFeedback(carolId, 3, "Average experience", QDateTime::currentDateTime().addDays(-7));
+    insertFeedback(aliceId, 5, "Great service", QDateTime::currentDateTimeUtc());
+    insertFeedback(bobId, 4, "Good support", QDateTime::currentDateTimeUtc().addDays(-3));
+    insertFeedback(carolId, 3, "Average experience", QDateTime::currentDateTimeUtc().addDays(-7));
 
     qDebug() << "Test data inserted successfully";
 }

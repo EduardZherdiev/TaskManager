@@ -3,6 +3,8 @@
 #include <QQmlEngine>
 #include <QDebug>
 #include <QDateTime>
+#include <QJsonArray>
+#include <QJsonObject>
 #include <algorithm>
 #include "database/dbprocessing.h"
 
@@ -95,6 +97,96 @@ TaskModel::TaskModel()
     m_filterMonth = today.month() - 1;  // 0-11
     m_filterYear = today.year();
     qDebug() << "[INIT] TaskModel initialized with current month filter:" << today.toString("MMMM yyyy");
+}
+
+static QString normalizeIsoDateTime(const QString &value)
+{
+    if (value.isEmpty()) {
+        return QString();
+    }
+
+    QDateTime dt = QDateTime::fromString(value, Qt::ISODateWithMs);
+    if (!dt.isValid()) {
+        dt = QDateTime::fromString(value, Qt::ISODate);
+    }
+
+    return dt.isValid() ? dt.toString(Qt::ISODate) : value;
+}
+
+void TaskModel::applyRemoteTasks(const QJsonArray &tasks)
+{
+    if (tasks.isEmpty()) {
+        updateTask();
+        return;
+    }
+
+    int currentUserId = getCurrentUserId();
+    for (const auto &taskValue : tasks) {
+        if (!taskValue.isObject()) {
+            continue;
+        }
+
+        const QJsonObject obj = taskValue.toObject();
+        const int taskId = obj.value("id").toInt();
+        const int userId = obj.value("user_id").toInt();
+
+        if (taskId <= 0) {
+            continue;
+        }
+
+        if (currentUserId >= 0 && userId != currentUserId) {
+            continue;
+        }
+
+        const QString title = obj.value("title").toString();
+        const QString description = obj.value("description").toString();
+        const int state = obj.value("state").toInt();
+
+        const QString createdAt = normalizeIsoDateTime(obj.value("created_at").toString());
+        const QString updatedAt = normalizeIsoDateTime(obj.value("updated_at").toString());
+        const QString deletedAt = normalizeIsoDateTime(obj.value("deleted_at").toString());
+
+        QVariantList args;
+        args << taskId;
+        auto existing = DBProcessing::instance().requestTableDataWhere(DBTypes::DBTables::Tasks,
+                                                                       "Id = ?",
+                                                                       args);
+
+        if (existing.first == DBTypes::DBResult::OK && !existing.second.empty()) {
+            const auto &row = existing.second.front();
+            const int rowId = row[0].toInt();
+
+            QVector<QString> columns;
+            QVariantList values;
+            columns << "Id";
+            values << rowId;
+
+            columns << "UserId" << "Title" << "Description" << "State" << "CreatedAt" << "UpdatedAt" << "DeletedAt";
+            values << userId
+                   << title
+                   << description
+                   << state
+                   << createdAt
+                   << updatedAt
+                   << (deletedAt.isEmpty() ? QVariant() : QVariant(deletedAt));
+
+            DBProcessing::instance().requestUpdate(DBTypes::DBTables::Tasks, columns, values);
+        } else {
+            QVariantList data;
+            data << taskId
+                 << userId
+                 << title
+                 << description
+                 << state
+                 << createdAt
+                 << updatedAt
+                 << (deletedAt.isEmpty() ? QVariant() : QVariant(deletedAt));
+
+            DBProcessing::instance().requestAddRow(DBTypes::DBTables::Tasks, data);
+        }
+    }
+
+    updateTask();
 }
 
 void TaskModel::setUserModel(UserModel* userModel)
@@ -286,28 +378,29 @@ bool TaskModel::createTask(const QString& title, const QString& description, int
 {
     // Validate title
     if (title.trimmed().isEmpty()) {
-        setError("Task title cannot be empty");
+        setError(tr("Task title cannot be empty"));
         return false;
     }
 
     // Validate state (0=Active, 1=Completed, 2=Archived)
     if (state < 0 || state > 2) {
-        setError("Invalid task state");
+        setError(tr("Invalid task state"));
         return false;
     }
 
     int userId = getCurrentUserId();
     if (userId < 0) {
-        setError("No user signed in");
+        setError(tr("No user signed in"));
         return false;
     }
 
     QVariantList data;
-    data << userId  // Valid UserId from Users table
+        data << QVariant() // Id (NULL for local insert)
+             << userId  // Valid UserId from Users table
          << title
          << description
          << state
-         << QDateTime::currentDateTime()
+         << QDateTime::currentDateTimeUtc()
          << QVariant()
          << QVariant();  // DeletedAt (null for new tasks)
     
@@ -327,19 +420,19 @@ bool TaskModel::updateTask(int taskId, const QString& title, const QString& desc
 {
     // Validate title
     if (title.trimmed().isEmpty()) {
-        setError("Task title cannot be empty");
+        setError(tr("Task title cannot be empty"));
         return false;
     }
 
     // Validate state (0=Active, 1=Completed, 2=Archived)
     if (state < 0 || state > 2) {
-        setError("Invalid task state");
+        setError(tr("Invalid task state"));
         return false;
     }
 
     int userId = getCurrentUserId();
     if (userId < 0) {
-        setError("No user signed in");
+        setError(tr("No user signed in"));
         return false;
     }
 
@@ -404,7 +497,7 @@ bool TaskModel::softDeleteTask(int taskId)
 {
     int userId = getCurrentUserId();
     if (userId < 0) {
-        setError("No user signed in");
+        setError(tr("No user signed in"));
         return false;
     }
     
@@ -432,7 +525,7 @@ bool TaskModel::deleteTask(int taskId)
 {
     int userId = getCurrentUserId();
     if (userId < 0) {
-        setError("No user signed in");
+        setError(tr("No user signed in"));
         return false;
     }
 
@@ -452,7 +545,7 @@ bool TaskModel::restoreTask(int taskId)
 {
     int userId = getCurrentUserId();
     if (userId < 0) {
-        setError("No user signed in");
+        setError(tr("No user signed in"));
         return false;
     }
 
