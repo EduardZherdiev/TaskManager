@@ -1,6 +1,8 @@
 #pragma once
 #include <QAbstractListModel>
 #include <QJsonArray>
+#include <QHash>
+#include <QVariantList>
 #include "task.h"
 #include "taskreader.h"
 
@@ -53,6 +55,7 @@ public:
     Q_INVOKABLE bool restoreTask(int taskId);
     Q_INVOKABLE void reloadTasks();
     Q_INVOKABLE void setFilterMonth(int month, int year);
+    Q_INVOKABLE void resolveConflicts(const QVariantList &ids, bool useRemote);
 
     void applyRemoteTasks(const QJsonArray &tasks);
 
@@ -64,6 +67,7 @@ signals:
     void lastErrorChanged();
     void filterMonthChanged();
     void filterYearChanged();
+    void conflictsDetected(const QVariantList &conflicts);
 
 private slots:
     void onUserChanged();
@@ -82,6 +86,28 @@ private:
     QString m_lastError;
     UserModel* m_userModel = nullptr;
     void updateStats();
+
+    struct TaskSnapshot {
+        int id = 0;
+        int rowId = 0;
+        int userId = 0;
+        QString title;
+        QString description;
+        int state = 0;
+        QString createdAt;
+        QString updatedAt;
+        QString deletedAt;
+    };
+
+    struct TaskConflict {
+        TaskSnapshot local;
+        TaskSnapshot remote;
+    };
+
+    QHash<int, TaskConflict> m_conflicts;
+
+    QString buildSummary(const TaskSnapshot &snap) const;
+    QVariantList buildConflictList() const;
 
     int getCurrentUserId() const;
     void sortTasks();

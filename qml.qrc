@@ -65,5 +65,6 @@
         <file>assets/icons/download.png</file>
         <file>assets/icons/export.png</file>
         <file>assets/icons/upload.png</file>
+        <file>qml/dialogs/SyncConflictDialog.qml</file>
     </qresource>
 </RCC>

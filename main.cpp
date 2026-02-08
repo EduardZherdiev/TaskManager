@@ -47,6 +47,9 @@ int main(int argc, char *argv[])
 
     QObject::connect(networkClient, &NetworkClient::tasksReceived,
                      taskModel, &TaskModel::applyRemoteTasks);
+
+    QObject::connect(networkClient, &NetworkClient::feedbacksReceived,
+                     feedbackModel, &FeedbackModel::applyRemoteFeedbacks);
     
     // Create UserRegistrationHandler for server-based registration
     UserRegistrationHandler* registrationHandler = new UserRegistrationHandler(networkClient);

@@ -23,6 +23,9 @@ public:
     Q_INVOKABLE QVariantMap getUserFeedback();
     Q_INVOKABLE bool saveFeedback(int rate, const QString& description);
 
+public slots:
+    void applyRemoteFeedbacks(const QJsonArray &feedbacks);
+
 signals:
     void lastErrorChanged();
 

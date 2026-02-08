@@ -6,3 +6,4 @@ UserRegistrationDialog 1.0 UserRegistrationDialog.qml
 UserSignInDialog 1.0 UserSignInDialog.qml
 UserEditDialog 1.0 UserEditDialog.qml
 FeedbackDialog 1.0 FeedbackDialog.qml
+SyncConflictDialog 1.0 SyncConflictDialog.qml

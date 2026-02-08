@@ -3,6 +3,8 @@
 #include <QQmlEngine>
 #include <QDebug>
 #include <QDateTime>
+#include <QJsonArray>
+#include <QJsonObject>
 #include "database/dbprocessing.h"
 
 FeedbackModel::FeedbackModel()
@@ -198,5 +200,68 @@ bool FeedbackModel::saveFeedback(int rate, const QString& description)
         setError(tr("Failed to create feedback"));
         return false;
     }
+}
+
+void FeedbackModel::applyRemoteFeedbacks(const QJsonArray &feedbacks)
+{
+    if (feedbacks.isEmpty()) {
+        updateFeedbacks();
+        return;
+    }
+
+    int currentUserId = getCurrentUserId();
+    for (const auto &feedbackValue : feedbacks) {
+        if (!feedbackValue.isObject()) {
+            continue;
+        }
+
+        const QJsonObject obj = feedbackValue.toObject();
+        const int userId = obj.value("user_id").toInt();
+
+        if (currentUserId >= 0 && userId != currentUserId) {
+            continue;
+        }
+
+        const int rate = obj.value("rate").toInt();
+        const QString description = obj.value("description").toString();
+        const QString createdAtStr = obj.value("created_at").toString();
+
+        QDateTime createdAt = QDateTime::fromString(createdAtStr, Qt::ISODate);
+        if (!createdAt.isValid()) {
+            createdAt = QDateTime::currentDateTimeUtc();
+        }
+
+        QVariantList args;
+        args << userId;
+        auto existing = DBProcessing::instance().requestTableDataWhere(DBTypes::DBTables::Feedbacks,
+                                                                       "UserId = ?",
+                                                                       args);
+
+        if (existing.first == DBTypes::DBResult::OK && !existing.second.empty()) {
+            const auto &row = existing.second.front();
+            const int rowId = row[0].toInt();
+
+            QVector<QString> columns;
+            QVariantList values;
+            columns << "Id";
+            values << rowId;
+            columns << "UserId" << "Rate" << "Description" << "CreatedAt";
+            values << userId
+                   << rate
+                   << description
+                   << createdAt;
+
+            DBProcessing::instance().requestUpdate(DBTypes::DBTables::Feedbacks, columns, values);
+        } else {
+            QVariantList data;
+            data << userId
+                 << rate
+                 << description
+                 << createdAt;
+            DBProcessing::instance().requestAddRow(DBTypes::DBTables::Feedbacks, data);
+        }
+    }
+
+    updateFeedbacks();
 }
 

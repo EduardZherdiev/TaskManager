@@ -21,6 +21,7 @@ Dialog {
     property string updatedAt: ""
     property string deletedAt: ""
     property bool titleTouched: false
+    property bool readOnlyMode: false
 
     signal saveRequested(int taskId, string title, string description, int taskState)
 
@@ -56,7 +57,10 @@ Dialog {
                 text: qsTr("View")
                 enabled: taskDialog.taskId !== -1
             }
-            TabButton { text: qsTr("Edit") }
+            TabButton {
+                text: qsTr("Edit")
+                enabled: !taskDialog.readOnlyMode
+            }
         }
 
         StackLayout {
@@ -210,7 +214,8 @@ Dialog {
             Button {
                 text: qsTr("Save")
                 type: 2
-                enabled: titleField.text.trim().length > 0
+                enabled: !taskDialog.readOnlyMode && titleField.text.trim().length > 0
+                visible: !taskDialog.readOnlyMode
                 onClicked: {
                     taskDialog.saveRequested(taskDialog.taskId, titleField.text.trim(), descriptionField.text, stateCombo.currentIndex)
                     taskDialog.close()
@@ -233,7 +238,11 @@ Dialog {
         stateCombo.currentIndex = taskState
         titleTouched = false  // Reset flag when opening dialog
         // Open in Edit tab for new tasks, View tab for existing
-        tabs.currentIndex = (taskId === -1) ? 1 : 0
+        if (readOnlyMode) {
+            tabs.currentIndex = 0
+        } else {
+            tabs.currentIndex = (taskId === -1) ? 1 : 0
+        }
         open()
     }
 

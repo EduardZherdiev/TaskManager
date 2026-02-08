@@ -6,6 +6,8 @@
 #include <QJsonArray>
 #include <QJsonObject>
 #include <algorithm>
+#include <QCoreApplication>
+#include <QStringList>
 #include "database/dbprocessing.h"
 
 bool TaskModel::showDeleted() const
@@ -113,10 +115,84 @@ static QString normalizeIsoDateTime(const QString &value)
     return dt.isValid() ? dt.toString(Qt::ISODate) : value;
 }
 
+static QDateTime parseIsoDateTime(const QString &value)
+{
+    if (value.isEmpty()) {
+        return QDateTime();
+    }
+
+    QDateTime dt = QDateTime::fromString(value, Qt::ISODateWithMs);
+    if (!dt.isValid()) {
+        dt = QDateTime::fromString(value, Qt::ISODate);
+    }
+
+    return dt;
+}
+
+static QString variantToIsoString(const QVariant &value)
+{
+    QDateTime dt = value.toDateTime();
+    if (dt.isValid()) {
+        return dt.toString(Qt::ISODate);
+    }
+
+    return normalizeIsoDateTime(value.toString());
+}
+
+static QString stateToText(int state)
+{
+    switch (state) {
+    case 0:
+        return QCoreApplication::translate("TaskModel", "Active");
+    case 1:
+        return QCoreApplication::translate("TaskModel", "Completed");
+    case 2:
+        return QCoreApplication::translate("TaskModel", "Archived");
+    default:
+        return QString::number(state);
+    }
+}
+
+QString TaskModel::buildSummary(const TaskSnapshot &snap) const
+{
+    return snap.title;
+}
+
+QVariantList TaskModel::buildConflictList() const
+{
+    QVariantList result;
+    for (auto it = m_conflicts.cbegin(); it != m_conflicts.cend(); ++it) {
+        const TaskConflict &conflict = it.value();
+        QVariantMap item;
+        item["id"] = conflict.remote.id;
+        item["localTitle"] = buildSummary(conflict.local);
+        item["remoteTitle"] = buildSummary(conflict.remote);
+        item["localId"] = conflict.local.id;
+        item["localDescription"] = conflict.local.description;
+        item["localState"] = conflict.local.state;
+        item["localCreatedAt"] = conflict.local.createdAt;
+        item["localUpdatedAt"] = conflict.local.updatedAt;
+        item["localDeletedAt"] = conflict.local.deletedAt;
+        item["remoteId"] = conflict.remote.id;
+        item["remoteDescription"] = conflict.remote.description;
+        item["remoteState"] = conflict.remote.state;
+        item["remoteCreatedAt"] = conflict.remote.createdAt;
+        item["remoteUpdatedAt"] = conflict.remote.updatedAt;
+        item["remoteDeletedAt"] = conflict.remote.deletedAt;
+        item["localUpdatedAt"] = conflict.local.updatedAt;
+        item["remoteUpdatedAt"] = conflict.remote.updatedAt;
+        result.append(item);
+    }
+    return result;
+}
+
 void TaskModel::applyRemoteTasks(const QJsonArray &tasks)
 {
+    m_conflicts.clear();
+
     if (tasks.isEmpty()) {
         updateTask();
+        emit conflictsDetected(QVariantList{});
         return;
     }
 
@@ -138,13 +214,16 @@ void TaskModel::applyRemoteTasks(const QJsonArray &tasks)
             continue;
         }
 
-        const QString title = obj.value("title").toString();
-        const QString description = obj.value("description").toString();
-        const int state = obj.value("state").toInt();
+        TaskSnapshot remote;
+        remote.id = taskId;
+        remote.userId = userId;
+        remote.title = obj.value("title").toString();
+        remote.description = obj.value("description").toString();
+        remote.state = obj.value("state").toInt();
 
-        const QString createdAt = normalizeIsoDateTime(obj.value("created_at").toString());
-        const QString updatedAt = normalizeIsoDateTime(obj.value("updated_at").toString());
-        const QString deletedAt = normalizeIsoDateTime(obj.value("deleted_at").toString());
+        remote.createdAt = normalizeIsoDateTime(obj.value("created_at").toString());
+        remote.updatedAt = normalizeIsoDateTime(obj.value("updated_at").toString());
+        remote.deletedAt = normalizeIsoDateTime(obj.value("deleted_at").toString());
 
         QVariantList args;
         args << taskId;
@@ -156,37 +235,123 @@ void TaskModel::applyRemoteTasks(const QJsonArray &tasks)
             const auto &row = existing.second.front();
             const int rowId = row[0].toInt();
 
+            TaskSnapshot local;
+            local.rowId = rowId;
+            local.id = row[1].toInt();
+            local.userId = row[2].toInt();
+            local.title = row[3].toString();
+            local.description = row[4].toString();
+            local.state = row[5].toInt();
+            local.createdAt = variantToIsoString(row[6]);
+            local.updatedAt = variantToIsoString(row[7]);
+            local.deletedAt = variantToIsoString(row[8]);
+
+            const QDateTime localUpdatedAt = parseIsoDateTime(local.updatedAt);
+            const QDateTime remoteUpdatedAt = parseIsoDateTime(remote.updatedAt);
+
+            const bool localDeleted = !local.deletedAt.isEmpty();
+            const bool remoteDeleted = !remote.deletedAt.isEmpty();
+            const bool updatedMismatch = localUpdatedAt.isValid() && remoteUpdatedAt.isValid() && localUpdatedAt != remoteUpdatedAt;
+            const bool deletedMismatch = localDeleted != remoteDeleted;
+
+            if (updatedMismatch || deletedMismatch) {
+                TaskConflict conflict;
+                conflict.local = local;
+                conflict.remote = remote;
+                m_conflicts.insert(taskId, conflict);
+                continue;
+            }
+
             QVector<QString> columns;
             QVariantList values;
             columns << "Id";
             values << rowId;
 
             columns << "UserId" << "Title" << "Description" << "State" << "CreatedAt" << "UpdatedAt" << "DeletedAt";
-            values << userId
-                   << title
-                   << description
-                   << state
-                   << createdAt
-                   << updatedAt
-                   << (deletedAt.isEmpty() ? QVariant() : QVariant(deletedAt));
+            values << remote.userId
+                   << remote.title
+                   << remote.description
+                   << remote.state
+                   << remote.createdAt
+                   << remote.updatedAt
+                   << (remote.deletedAt.isEmpty() ? QVariant() : QVariant(remote.deletedAt));
 
             DBProcessing::instance().requestUpdate(DBTypes::DBTables::Tasks, columns, values);
         } else {
             QVariantList data;
             data << taskId
-                 << userId
-                 << title
-                 << description
-                 << state
-                 << createdAt
-                 << updatedAt
-                 << (deletedAt.isEmpty() ? QVariant() : QVariant(deletedAt));
+                 << remote.userId
+                 << remote.title
+                 << remote.description
+                 << remote.state
+                 << remote.createdAt
+                 << remote.updatedAt
+                 << (remote.deletedAt.isEmpty() ? QVariant() : QVariant(remote.deletedAt));
 
             DBProcessing::instance().requestAddRow(DBTypes::DBTables::Tasks, data);
         }
     }
 
     updateTask();
+    emit conflictsDetected(buildConflictList());
+}
+
+void TaskModel::resolveConflicts(const QVariantList &ids, bool useRemote)
+{
+    for (const auto &idValue : ids) {
+        const int taskId = idValue.toInt();
+        if (!m_conflicts.contains(taskId)) {
+            continue;
+        }
+
+        const TaskConflict conflict = m_conflicts.value(taskId);
+
+        if (useRemote) {
+            int rowId = conflict.local.rowId;
+            if (rowId <= 0) {
+                QVariantList args;
+                args << taskId;
+                auto existing = DBProcessing::instance().requestTableDataWhere(DBTypes::DBTables::Tasks,
+                                                                               "Id = ?",
+                                                                               args);
+                if (existing.first == DBTypes::DBResult::OK && !existing.second.empty()) {
+                    rowId = existing.second.front()[0].toInt();
+                }
+            }
+
+            if (rowId > 0) {
+                QVector<QString> columns;
+                QVariantList values;
+                columns << "Id";
+                values << rowId;
+                columns << "UserId" << "Title" << "Description" << "State" << "CreatedAt" << "UpdatedAt" << "DeletedAt";
+                values << conflict.remote.userId
+                       << conflict.remote.title
+                       << conflict.remote.description
+                       << conflict.remote.state
+                       << conflict.remote.createdAt
+                       << conflict.remote.updatedAt
+                       << (conflict.remote.deletedAt.isEmpty() ? QVariant() : QVariant(conflict.remote.deletedAt));
+                DBProcessing::instance().requestUpdate(DBTypes::DBTables::Tasks, columns, values);
+            } else {
+                QVariantList data;
+                data << conflict.remote.id
+                     << conflict.remote.userId
+                     << conflict.remote.title
+                     << conflict.remote.description
+                     << conflict.remote.state
+                     << conflict.remote.createdAt
+                     << conflict.remote.updatedAt
+                     << (conflict.remote.deletedAt.isEmpty() ? QVariant() : QVariant(conflict.remote.deletedAt));
+                DBProcessing::instance().requestAddRow(DBTypes::DBTables::Tasks, data);
+            }
+        }
+
+        m_conflicts.remove(taskId);
+    }
+
+    updateTask();
+    emit conflictsDetected(buildConflictList());
 }
 
 void TaskModel::setUserModel(UserModel* userModel)

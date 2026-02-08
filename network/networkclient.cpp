@@ -9,6 +9,7 @@
 #include <QDebug>
 #include <QEventLoop>
 #include <QTimer>
+#include <QDateTime>
 #include "../database/dbprocessing.h"
 
 
@@ -511,17 +512,18 @@ void NetworkClient::onFinished(QNetworkReply *reply)
         }
         
         qDebug() << "Помилка:" << errorMsg;
+        if (url.contains("/health")) {
+            emit healthChecked(false, errorMsg);
+            reply->deleteLater();
+            return;
+        }
+
         emit error(errorMsg);
 
         if (url.contains("/users/refresh")) {
             m_isRefreshing = false;
             clearAccessToken();
             clearRefreshToken();
-        }
-        
-        // Перевірити, чи це запит на здоров'я
-        if (url.contains("/health")) {
-            emit healthChecked(false, errorMsg);
         }
         
         reply->deleteLater();
@@ -532,12 +534,13 @@ void NetworkClient::onFinished(QNetworkReply *reply)
     if (reply->error() != QNetworkReply::NoError) {
         QString errorMsg = networkErrorToEnglish(reply->error());
         qDebug() << "Помилка мережі:" << reply->errorString();
-        emit error(errorMsg);
-        
-        QString url = reply->url().toString();
         if (url.contains("/health")) {
             emit healthChecked(false, errorMsg);
+            reply->deleteLater();
+            return;
         }
+
+        emit error(errorMsg);
         
         reply->deleteLater();
         return;
@@ -770,6 +773,20 @@ void NetworkClient::uploadChangesForUser(int userId)
     }
 
     int taskCount = 0;
+    int deletedCount = 0;
+    QJsonArray keepIds;
+    QJsonArray deletedIds;
+    auto toIsoString = [](const QVariant &value) {
+        if (value.isNull()) {
+            return QString();
+        }
+        QDateTime dt = value.toDateTime();
+        if (dt.isValid()) {
+            return dt.toString(Qt::ISODate);
+        }
+        return value.toString();
+    };
+
     for (const auto &taskRow : tasks) {
         if (taskRow.size() >= 9) {
             int rowUserId = taskRow[2].toInt();
@@ -778,22 +795,48 @@ void NetworkClient::uploadChangesForUser(int userId)
             }
             const QString deletedAt = taskRow[8].toString();
             if (!deletedAt.isEmpty()) {
+                const int taskId = taskRow[1].toInt();
+                if (taskId > 0) {
+                    deletedIds.append(taskId);
+                    deletedCount++;
+                }
                 continue;
             }
             const int taskId = taskRow[1].toInt();
             QString title = taskRow[3].toString();
             QString description = taskRow[4].toString();
             int state = taskRow[5].toInt();
+            const QString createdAt = toIsoString(taskRow[6]);
+            const QString updatedAt = toIsoString(taskRow[7]);
             QJsonObject taskObj;
             taskObj["id"] = taskId;
             taskObj["title"] = title;
             taskObj["description"] = description;
             taskObj["state"] = state;
+            if (!createdAt.isEmpty()) {
+                taskObj["created_at"] = createdAt;
+            }
+            if (!updatedAt.isEmpty()) {
+                taskObj["updated_at"] = updatedAt;
+            }
             QJsonDocument taskDoc(taskObj);
             sendRequest("/tasks", QNetworkAccessManager::PostOperation, taskDoc.toJson());
             taskCount++;
+            keepIds.append(taskId);
         }
     }
+
+    if (!deletedIds.isEmpty()) {
+        QJsonObject payload;
+        payload["ids"] = deletedIds;
+        QJsonDocument doc(payload);
+        sendRequest("/tasks/softdelete", QNetworkAccessManager::PostOperation, doc.toJson());
+    }
+
+    QJsonObject deletePayload;
+    deletePayload["keep_ids"] = keepIds;
+    QJsonDocument deleteDoc(deletePayload);
+    sendRequest("/tasks/delete", QNetworkAccessManager::PostOperation, deleteDoc.toJson());
 
     auto [feedbacksResult, feedbacks] = DBProcessing::instance().requestTableData(DBTypes::DBTables::Feedbacks);
     if (feedbacksResult != DBTypes::DBResult::OK) {
@@ -824,11 +867,12 @@ void NetworkClient::uploadChangesForUser(int userId)
     }
 
     // Emit completion after a small delay to ensure requests are processed
-    QTimer::singleShot(500, this, [this, userId, taskCount, feedbackCount]() {
-        emit syncCompleted(QString("Upload completed for user %1: %2 tasks, %3 feedbacks")
+    QTimer::singleShot(500, this, [this, userId, taskCount, feedbackCount, deletedCount]() {
+        emit syncCompleted(QString("Upload completed for user %1: %2 tasks, %3 feedbacks, %4 deleted")
                               .arg(userId)
                               .arg(taskCount)
-                              .arg(feedbackCount));
+                              .arg(feedbackCount)
+                              .arg(deletedCount));
         qDebug() << "Зміни користувача успішно завантажені";
     });
 }

@@ -13,20 +13,54 @@ Rectangle {
     
     property bool isSyncing: false
     property string networkErrorMessage: ""
+    property bool isSessionExpired: false
+    property bool serverHealthy: false
+    property string serverHealthMessage: ""
+
+    Timer {
+        interval: 30000
+        repeat: true
+        running: true
+        triggeredOnStart: true
+        onTriggered: NetworkClient.checkHealth()
+    }
 
     Dialog {
         id: networkErrorDialog
         modal: true
         parent: Overlay.overlay
         anchors.centerIn: Overlay.overlay
-        title: qsTr("Server error")
+        title: ""
         width: 420
         height: 250
+
+        background: Rectangle {
+            radius: Style.largeRadius
+            color: Style.surfaceColor
+
+            Rectangle {
+                visible: Style.isDarkTheme
+                anchors.left: parent.left
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                width: 1
+                color: Style.componentOutline
+            }
+
+            Rectangle {
+                visible: Style.isDarkTheme
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                width: 1
+                color: Style.componentOutline
+            }
+        }
 
         onOpened: {
             errorText.text = networkErrorMessage
             errorText.focus = false
-            okButton.forceActiveFocus()
+            actionButton.forceActiveFocus()
         }
 
         onClosed: {
@@ -44,23 +78,111 @@ Rectangle {
             selectByMouse: true
         }
 
+        header: Rectangle {
+            height: 42
+            color: Style.surfaceColor
+            border.color: Style.componentOutline
+            border.width: Style.isDarkTheme ? 0 : 1
+
+            Rectangle {
+                visible: Style.isDarkTheme
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                height: 1
+                color: Style.componentOutline
+            }
+
+            Rectangle {
+                visible: Style.isDarkTheme
+                anchors.left: parent.left
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                width: 1
+                color: Style.componentOutline
+            }
+
+            Rectangle {
+                visible: Style.isDarkTheme
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                width: 1
+                color: Style.componentOutline
+            }
+
+
+            Label {
+                anchors.centerIn: parent
+                text: isSessionExpired ? qsTr("Session expired") : qsTr("Server error")
+                color: Style.textColor
+                font.bold: true
+            }
+        }
+
         footer: DialogButtonBox {
+            background: Rectangle {
+                color: Style.surfaceColor
+                border.color: Style.componentOutline
+                border.width: Style.isDarkTheme ? 0 : 1
+
+                Rectangle {
+                    visible: Style.isDarkTheme
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    height: 1
+                    color: Style.componentOutline
+                }
+
+                Rectangle {
+                    visible: Style.isDarkTheme
+                    anchors.left: parent.left
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    width: 1
+                    color: Style.componentOutline
+                }
+
+                Rectangle {
+                    visible: Style.isDarkTheme
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    width: 1
+                    color: Style.componentOutline
+                }
+            }
+
             Button {
-                id: okButton
-                text: qsTr("OK")
+                id: actionButton
+                text: isSessionExpired ? qsTr("Sign in") : qsTr("OK")
                 DialogButtonBox.buttonRole: DialogButtonBox.AcceptRole
 
                 onClicked: {
                     networkErrorDialog.close()
+                    if (isSessionExpired) {
+                        signInDialog.open()
+                    }
                 }
 
                 Keys.onReturnPressed: {
                     networkErrorDialog.close()
+                    if (isSessionExpired) {
+                        signInDialog.open()
+                    }
                 }
                 Keys.onEscapePressed: {
                     networkErrorDialog.close()
                 }
             }
+        }
+    }
+
+    SyncConflictDialog {
+        id: syncConflictDialog
+        onResolveRequested: function(ids, useRemote) {
+            TaskModel.resolveConflicts(ids, useRemote)
         }
     }
 
@@ -221,6 +343,37 @@ Rectangle {
                     running: isSyncing
                     scale: 0.7
                     anchors.verticalCenter: parent.verticalCenter
+                    palette.text: Style.primaryColor
+                    palette.highlight: Style.primaryColor
+                }
+
+                Rectangle {
+                    id: healthIndicator
+                    width: 10
+                    height: 10
+                    radius: 5
+                    color: serverHealthy ? Style.statusCompleted : Style.statusArchived
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    MouseArea {
+                        id: healthMouseArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        onClicked: {
+                            if (!serverHealthy) {
+                                var msg = serverHealthMessage
+                                if (!msg || msg.length === 0) {
+                                    msg = qsTr("Server offline. Please check your connection.")
+                                }
+                                showNetworkError(msg)
+                            }
+                        }
+                    }
+
+                    ToolTip.visible: healthMouseArea.containsMouse
+                    ToolTip.text: serverHealthy
+                        ? qsTr("Server online")
+                        : qsTr("Server offline")
                 }
             }
         }
@@ -399,8 +552,9 @@ Rectangle {
 
     function showNetworkError(msg) {
         if (!msg || msg.length === 0) {
-            return
+            msg = qsTr("Network error. Please check your connection.")
         }
+        isSessionExpired = msg.indexOf("Session expired") !== -1
         networkErrorMessage = msg
         networkErrorDialog.open()
     }
@@ -423,6 +577,11 @@ Rectangle {
             isSyncing = false
             console.log("Sync failed:", error)
             showNetworkError(error)
+        }
+
+        function onHealthChecked(isHealthy, message) {
+            serverHealthy = isHealthy
+            serverHealthMessage = message
         }
     }
 
@@ -450,6 +609,19 @@ Rectangle {
                 AppSettings.savedRefreshToken = token
             } else {
                 AppSettings.savedRefreshToken = ""
+            }
+        }
+    }
+
+    Connections {
+        target: TaskModel
+
+        function onConflictsDetected(conflicts) {
+            syncConflictDialog.setConflicts(conflicts)
+            if (conflicts.length > 0) {
+                syncConflictDialog.open()
+            } else {
+                syncConflictDialog.close()
             }
         }
     }
