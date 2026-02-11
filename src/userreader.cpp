@@ -14,6 +14,7 @@ UserReader::UserReader()
 static std::vector<User> transformUsers(const std::vector<DBEntry>& source)
 {
     std::vector<User> target;
+    target.reserve(source.size());
     std::transform(source.begin(), source.end(), std::back_inserter(target),
                    [](const DBEntry& entry) {
                        if (entry.size() < 3)

@@ -32,6 +32,7 @@ DBResult DBManipulator::updateValue(const std::string& tableName, const QVector<
 
     // Bind values in the same order as the SET clause, then append rowid for WHERE
     QVariantList bindValues;
+    bindValues.reserve(values.size());
     for (int i = 1; i < values.size(); ++i) {
         bindValues << values[i];
     }

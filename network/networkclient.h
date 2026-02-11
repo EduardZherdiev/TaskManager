@@ -6,6 +6,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
+#include <QList>
 
 
 class NetworkClient : public QObject
@@ -123,7 +124,7 @@ private:
     QString m_accessToken;
     QString m_refreshToken;
     bool m_isRefreshing = false;
-    PendingRequest m_pendingRequest;
+    QList<PendingRequest> m_pendingRequests;
 
     // Допоміжні методи
     QNetworkRequest createRequest(const QString &endpoint);

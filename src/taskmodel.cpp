@@ -6,7 +6,6 @@
 #include <QJsonArray>
 #include <QJsonObject>
 #include <algorithm>
-#include <QCoreApplication>
 #include <QStringList>
 #include "database/dbprocessing.h"
 
@@ -139,20 +138,6 @@ static QString variantToIsoString(const QVariant &value)
     return normalizeIsoDateTime(value.toString());
 }
 
-static QString stateToText(int state)
-{
-    switch (state) {
-    case 0:
-        return QCoreApplication::translate("TaskModel", "Active");
-    case 1:
-        return QCoreApplication::translate("TaskModel", "Completed");
-    case 2:
-        return QCoreApplication::translate("TaskModel", "Archived");
-    default:
-        return QString::number(state);
-    }
-}
-
 QString TaskModel::buildSummary(const TaskSnapshot &snap) const
 {
     return snap.title;
@@ -179,8 +164,6 @@ QVariantList TaskModel::buildConflictList() const
         item["remoteCreatedAt"] = conflict.remote.createdAt;
         item["remoteUpdatedAt"] = conflict.remote.updatedAt;
         item["remoteDeletedAt"] = conflict.remote.deletedAt;
-        item["localUpdatedAt"] = conflict.local.updatedAt;
-        item["remoteUpdatedAt"] = conflict.remote.updatedAt;
         result.append(item);
     }
     return result;

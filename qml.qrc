@@ -66,5 +66,7 @@
         <file>assets/icons/export.png</file>
         <file>assets/icons/upload.png</file>
         <file>qml/dialogs/SyncConflictDialog.qml</file>
+        <file>qml/dialogs/NetworkErrorDialog.qml</file>
+        <file>qml/dialogs/SyncSuccessDialog.qml</file>
     </qresource>
 </RCC>

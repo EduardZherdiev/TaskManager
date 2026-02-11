@@ -15,6 +15,7 @@ FeedbackReader::FeedbackReader()
 static std::vector<Feedback> transformFeedbacks(const std::vector<DBEntry>& source)
 {
     std::vector<Feedback> target;
+    target.reserve(source.size());
     std::transform(source.begin(), source.end(), std::back_inserter(target),
                    [](const DBEntry& entry) {
                        if (entry.size() < 4)

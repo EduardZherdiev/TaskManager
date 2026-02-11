@@ -45,6 +45,7 @@ DBResult DBSelector::selectWhere(
     while (query.next()) {
         const QSqlRecord record = query.record();
         QVariantList row;
+        row.reserve(record.count());
 
         for (int i = 0; i < record.count(); ++i) {
             row.push_back(record.value(i));
@@ -68,6 +69,7 @@ DBResult DBSelector::selectAll(const std::string& tableName, std::vector<QVarian
         while (resultQuery.next()) {
             const auto& resultRecord = resultQuery.record();
             QVariantList result;
+            result.reserve(resultRecord.count());
             for (int i = 0; i < resultRecord.count(); ++i) {
                 result.push_back(resultRecord.value(i));
             }

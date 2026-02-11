@@ -101,12 +101,12 @@ QString UserModel::hashPassword(const QString& password)
     const uint32_t m_cost = (1 << 16);    // 64 MiB memory usage
     const uint32_t parallelism = 1;       // single-threaded
     const size_t hashlen = 32;            // 32 bytes output
-    const size_t encodedlen = argon2_encodedlen(t_cost, m_cost, parallelism, 16, hashlen, Argon2_id);
-    
+    static const size_t encodedlen = argon2_encodedlen(t_cost, m_cost, parallelism, 16, hashlen, Argon2_id);
+    static const QByteArray salt("TaskManagerSalt1"); // Fixed salt (for production use random salt per user)
+
     QByteArray passwordBytes = password.toUtf8();
-    QByteArray salt = "TaskManagerSalt1"; // Fixed salt (for production use random salt per user)
     
-    char encoded[encodedlen];
+    QByteArray encoded(static_cast<int>(encodedlen), '\0');
     
     int result = argon2id_hash_encoded(
         t_cost,
@@ -117,8 +117,8 @@ QString UserModel::hashPassword(const QString& password)
         salt.constData(),
         salt.size(),
         hashlen,
-        encoded,
-        encodedlen
+        encoded.data(),
+        encoded.size()
     );
     
     if (result != ARGON2_OK) {
@@ -126,7 +126,7 @@ QString UserModel::hashPassword(const QString& password)
         return QString();
     }
     
-    return QString::fromUtf8(encoded);
+    return QString::fromUtf8(encoded.constData());
 }
 
 bool UserModel::signIn(const QString& login, const QString& password)

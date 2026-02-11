@@ -16,6 +16,7 @@ Rectangle {
     property bool isSessionExpired: false
     property bool serverHealthy: false
     property string serverHealthMessage: ""
+    property string lastSyncAction: ""
 
     Timer {
         interval: 30000
@@ -25,157 +26,13 @@ Rectangle {
         onTriggered: NetworkClient.checkHealth()
     }
 
-    Dialog {
+    NetworkErrorDialog {
         id: networkErrorDialog
-        modal: true
-        parent: Overlay.overlay
-        anchors.centerIn: Overlay.overlay
-        title: ""
-        width: 420
-        height: 250
-
-        background: Rectangle {
-            radius: Style.largeRadius
-            color: Style.surfaceColor
-
-            Rectangle {
-                visible: Style.isDarkTheme
-                anchors.left: parent.left
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                width: 1
-                color: Style.componentOutline
-            }
-
-            Rectangle {
-                visible: Style.isDarkTheme
-                anchors.right: parent.right
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                width: 1
-                color: Style.componentOutline
-            }
-        }
-
-        onOpened: {
-            errorText.text = networkErrorMessage
-            errorText.focus = false
-            actionButton.forceActiveFocus()
-        }
-
+        message: networkErrorMessage
+        sessionExpired: isSessionExpired
+        onSignInRequested: signInDialog.open()
         onClosed: {
             isSyncing = false
-        }
-
-        contentItem: TextEdit {
-            id: errorText
-            color: Style.textColor
-            readOnly: true
-            wrapMode: TextEdit.Wrap
-            padding: 10
-            selectedTextColor: Style.textColor
-            selectionColor: Style.primaryColor
-            selectByMouse: true
-        }
-
-        header: Rectangle {
-            height: 42
-            color: Style.surfaceColor
-            border.color: Style.componentOutline
-            border.width: Style.isDarkTheme ? 0 : 1
-
-            Rectangle {
-                visible: Style.isDarkTheme
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.top: parent.top
-                height: 1
-                color: Style.componentOutline
-            }
-
-            Rectangle {
-                visible: Style.isDarkTheme
-                anchors.left: parent.left
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                width: 1
-                color: Style.componentOutline
-            }
-
-            Rectangle {
-                visible: Style.isDarkTheme
-                anchors.right: parent.right
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                width: 1
-                color: Style.componentOutline
-            }
-
-
-            Label {
-                anchors.centerIn: parent
-                text: isSessionExpired ? qsTr("Session expired") : qsTr("Server error")
-                color: Style.textColor
-                font.bold: true
-            }
-        }
-
-        footer: DialogButtonBox {
-            background: Rectangle {
-                color: Style.surfaceColor
-                border.color: Style.componentOutline
-                border.width: Style.isDarkTheme ? 0 : 1
-
-                Rectangle {
-                    visible: Style.isDarkTheme
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.bottom: parent.bottom
-                    height: 1
-                    color: Style.componentOutline
-                }
-
-                Rectangle {
-                    visible: Style.isDarkTheme
-                    anchors.left: parent.left
-                    anchors.top: parent.top
-                    anchors.bottom: parent.bottom
-                    width: 1
-                    color: Style.componentOutline
-                }
-
-                Rectangle {
-                    visible: Style.isDarkTheme
-                    anchors.right: parent.right
-                    anchors.top: parent.top
-                    anchors.bottom: parent.bottom
-                    width: 1
-                    color: Style.componentOutline
-                }
-            }
-
-            Button {
-                id: actionButton
-                text: isSessionExpired ? qsTr("Sign in") : qsTr("OK")
-                DialogButtonBox.buttonRole: DialogButtonBox.AcceptRole
-
-                onClicked: {
-                    networkErrorDialog.close()
-                    if (isSessionExpired) {
-                        signInDialog.open()
-                    }
-                }
-
-                Keys.onReturnPressed: {
-                    networkErrorDialog.close()
-                    if (isSessionExpired) {
-                        signInDialog.open()
-                    }
-                }
-                Keys.onEscapePressed: {
-                    networkErrorDialog.close()
-                }
-            }
         }
     }
 
@@ -184,6 +41,10 @@ Rectangle {
         onResolveRequested: function(ids, useRemote) {
             TaskModel.resolveConflicts(ids, useRemote)
         }
+    }
+
+    SyncSuccessDialog {
+        id: syncSuccessDialog
     }
 
 
@@ -317,6 +178,7 @@ Rectangle {
                     enabled: !isSyncing
                     onClicked: {
                         if (UserModel.currentUserId > 0) {
+                            lastSyncAction = "download"
                             NetworkClient.downloadChangesForUser(UserModel.currentUserId)
                         } else {
                             console.log("No user logged in")
@@ -331,6 +193,7 @@ Rectangle {
                     enabled: !isSyncing
                     onClicked: {
                         if (UserModel.currentUserId > 0) {
+                            lastSyncAction = "upload"
                             NetworkClient.uploadChangesForUser(UserModel.currentUserId)
                         } else {
                             console.log("No user logged in")
@@ -571,11 +434,22 @@ Rectangle {
         function onSyncCompleted(message) {
             isSyncing = false
             console.log("Sync completed:", message)
+            if (lastSyncAction === "download") {
+                syncSuccessDialog.dialogTitle = qsTr("Download complete")
+                syncSuccessDialog.message = qsTr("Data successfully received from server.")
+                syncSuccessDialog.open()
+            } else if (lastSyncAction === "upload") {
+                syncSuccessDialog.dialogTitle = qsTr("Upload complete")
+                syncSuccessDialog.message = qsTr("Data successfully sent to server.")
+                syncSuccessDialog.open()
+            }
+            lastSyncAction = ""
         }
         
         function onSyncFailed(error) {
             isSyncing = false
             console.log("Sync failed:", error)
+            lastSyncAction = ""
             showNetworkError(error)
         }
 

@@ -10,16 +10,17 @@
 #include <QEventLoop>
 #include <QTimer>
 #include <QDateTime>
+#include <utility>
 #include "../database/dbprocessing.h"
 
 
 NetworkClient::NetworkClient(QObject *parent)
     : QObject(parent), m_manager(new QNetworkAccessManager(this))
 {
-    // Встановити базовий URL за замовчуванням (локально)
+    // Set default base URL (local)
     m_baseUrl = "http://127.0.0.1:8000";
 
-    // Підключити сигнал завершення запиту
+    // Connect request finished handler
     connect(m_manager, &QNetworkAccessManager::finished, this, &NetworkClient::onFinished);
 }
 
@@ -235,17 +236,20 @@ QNetworkReply *NetworkClient::sendRequestWithToken(const QString &endpoint, QNet
 
 void NetworkClient::retryPendingRequest()
 {
-    if (!m_pendingRequest.isValid()) {
+    if (m_pendingRequests.isEmpty()) {
         return;
     }
 
-    int retryCount = m_pendingRequest.retryCount + 1;
-    sendRequest(m_pendingRequest.endpoint, m_pendingRequest.operation, m_pendingRequest.body, retryCount);
-    m_pendingRequest.clear();
+    auto pendingList = std::move(m_pendingRequests);
+
+    for (const auto &pending : pendingList) {
+        int retryCount = pending.retryCount + 1;
+        sendRequest(pending.endpoint, pending.operation, pending.body, retryCount);
+    }
 }
 
 
-// ==================== КОРИСТУВАЧІ ====================
+// ==================== USERS ====================
 
 void NetworkClient::checkUserExists(const QString &login)
 {
@@ -298,7 +302,7 @@ void NetworkClient::deleteUser(int userId)
 }
 
 
-// ==================== ЗАДАЧІ ====================
+// ==================== TASKS ====================
 
 void NetworkClient::createTask(const QString &title, const QString &description, int state)
 {
@@ -351,7 +355,7 @@ void NetworkClient::deleteTask(int taskId)
 }
 
 
-// ==================== ВІДГУКИ ====================
+// ==================== FEEDBACKS ====================
 
 void NetworkClient::createFeedback(int rate, const QString &description)
 {
@@ -419,7 +423,7 @@ void NetworkClient::refreshAccessToken()
 }
 
 
-// ==================== ОБРОБКА ВІДПОВІДЕЙ ====================
+// ==================== RESPONSE HANDLING ====================
 
 void NetworkClient::onFinished(QNetworkReply *reply)
 {
@@ -428,26 +432,30 @@ void NetworkClient::onFinished(QNetworkReply *reply)
     QString statusReason = reply->attribute(QNetworkRequest::HttpReasonPhraseAttribute).toString();
     QString url = reply->url().toString();
     
-    qDebug() << "HTTP Status:" << statusCode << statusReason;
-    qDebug() << "Response Body:" << responseBody;
-    
     if (statusCode == 401) {
         if (url.contains("/users/refresh")) {
             m_isRefreshing = false;
             clearAccessToken();
             clearRefreshToken();
+            m_pendingRequests.clear();
             emit error("Session expired. Please sign in again.");
             reply->deleteLater();
             return;
         }
 
         int retryCount = reply->property("retryCount").toInt();
-        if (!m_refreshToken.isEmpty() && !m_isRefreshing && retryCount < 1) {
-            m_pendingRequest.endpoint = reply->property("endpoint").toString();
-            m_pendingRequest.operation = static_cast<QNetworkAccessManager::Operation>(reply->property("operation").toInt());
-            m_pendingRequest.body = reply->property("body").toByteArray();
-            m_pendingRequest.retryCount = retryCount;
-            refreshAccessToken();
+        if (!m_refreshToken.isEmpty() && retryCount < 1) {
+            PendingRequest pending;
+            pending.endpoint = reply->property("endpoint").toString();
+            pending.operation = static_cast<QNetworkAccessManager::Operation>(reply->property("operation").toInt());
+            pending.body = reply->property("body").toByteArray();
+            pending.retryCount = retryCount;
+            m_pendingRequests.append(pending);
+
+            if (!m_isRefreshing) {
+                refreshAccessToken();
+            }
+
             reply->deleteLater();
             return;
         }
@@ -459,25 +467,28 @@ void NetworkClient::onFinished(QNetworkReply *reply)
         return;
     }
 
-    // Обробити помилки (4xx, 5xx статус коди)
+    qDebug() << "HTTP Status:" << statusCode << statusReason;
+    qDebug() << "Response Body:" << responseBody;
+
+    // Handle HTTP errors (4xx, 5xx)
     if (statusCode >= 400) {
         QString errorMsg = QString::number(statusCode) + " " + statusReason + "\n";
         
-        // Спробуємо парсити JSON помилку від сервера
+        // Try to parse JSON error from server
         QJsonDocument errorDoc = QJsonDocument::fromJson(responseBody);
         if (errorDoc.isObject()) {
             QJsonObject obj = errorDoc.object();
             if (obj.contains("detail")) {
                 QJsonValue detail = obj["detail"];
                 
-                // Перевірити чи detail є масивом (FastAPI валидація) або строкою
+                // Check if detail is an array (FastAPI validation) or string
                 if (detail.isArray()) {
-                    QJsonArray detailArray = detail.toArray();
+                    const QJsonArray detailArray = detail.toArray();
                     errorMsg += QCoreApplication::translate("NetworkClient", "Validation errors:") + "\n";
-                    for (const auto& item : detailArray) {
+                    for (const auto &item : detailArray) {
                         if (item.isObject()) {
                             QJsonObject errObj = item.toObject();
-                            // Отримати останній елемент з "loc" (поле)
+                            // Use the last element from "loc" as the field name
                             QString field = QCoreApplication::translate("NetworkClient", "unknown");
                             if (errObj.contains("loc")) {
                                 QJsonArray locArray = errObj["loc"].toArray();
@@ -490,14 +501,14 @@ void NetworkClient::onFinished(QNetworkReply *reply)
                         }
                     }
                 } else {
-                    // Якщо це просто строка
+                    // Simple string message
                     errorMsg += detail.toString();
                 }
             } else if (obj.contains("validation_errors")) {
-                // Для списку помилок валидації
+                // Validation error list
                 errorMsg += QCoreApplication::translate("NetworkClient", "Validation errors:") + "\n";
-                QJsonArray errors = obj["validation_errors"].toArray();
-                for (const auto& error : errors) {
+                const QJsonArray errors = obj["validation_errors"].toArray();
+                for (const auto &error : errors) {
                     if (error.isObject()) {
                         QJsonObject errObj = error.toObject();
                         QString field = errObj["loc"].toArray().last().toString();
@@ -507,7 +518,7 @@ void NetworkClient::onFinished(QNetworkReply *reply)
                 }
             }
         } else if (statusCode >= 500) {
-            // Для серверних помилок без JSON
+            // Server error without JSON body
             errorMsg += QString::fromUtf8(responseBody);
         }
         
@@ -524,13 +535,14 @@ void NetworkClient::onFinished(QNetworkReply *reply)
             m_isRefreshing = false;
             clearAccessToken();
             clearRefreshToken();
+            m_pendingRequests.clear();
         }
         
         reply->deleteLater();
         return;
     }
     
-    // Обробити помилки з'єднання
+    // Handle transport/network errors
     if (reply->error() != QNetworkReply::NoError) {
         QString errorMsg = networkErrorToEnglish(reply->error());
         qDebug() << "Помилка мережі:" << reply->errorString();
@@ -548,23 +560,19 @@ void NetworkClient::onFinished(QNetworkReply *reply)
 
     qDebug() << "Відповідь від сервера:" << responseBody;
 
-    // Парсити JSON
     QJsonDocument doc = QJsonDocument::fromJson(responseBody);
-    
-    // Визначити тип запиту за URL та методом
+
     QNetworkAccessManager::Operation operation = reply->operation();
     
     qDebug() << "URL:" << url << "Метод:" << operation;
 
-    // Обробити запит на здоров'я
+    // Health check
     if (url.contains("/health")) {
         emit healthChecked(true, QString::fromUtf8(responseBody));
         qDebug() << "Сервер здоровий";
     }
-    // Обробити різні типи запитів
     else if (url.contains("/users")) {
         if (url.contains("/check")) {
-            // Проверка наличия пользователя
             if (doc.isObject()) {
                 QJsonObject obj = doc.object();
                 bool exists = obj["exists"].toBool();
@@ -574,7 +582,6 @@ void NetworkClient::onFinished(QNetworkReply *reply)
             }
         } 
         else if (operation == QNetworkAccessManager::PostOperation && url.contains("/login")) {
-            // Вхід користувача - повертає JWT токен та користувача
             if (doc.isObject()) {
                 QJsonObject obj = doc.object();
                 QString token = obj["access_token"].toString();
@@ -618,7 +625,7 @@ void NetworkClient::onFinished(QNetworkReply *reply)
             }
         }
         else if (operation == QNetworkAccessManager::PostOperation) {
-            // Реєстрація користувача - повертає ID
+            // User registration - returns ID
             bool ok = false;
             int userId = 0;
             
@@ -626,7 +633,6 @@ void NetworkClient::onFinished(QNetworkReply *reply)
                 QJsonObject obj = doc.object();
                 userId = obj["id"].toInt();
             } else {
-                // Сервер може повертати просто число
                 QString jsonStr = QString::fromUtf8(responseBody);
                 userId = jsonStr.toInt(&ok);
             }
@@ -637,26 +643,26 @@ void NetworkClient::onFinished(QNetworkReply *reply)
             }
         } 
         else if (operation == QNetworkAccessManager::GetOperation) {
-            // GET запит
+            // GET request
             if (doc.isArray()) {
-                // Отримання всіх користувачів
+                // Fetch all users
                 emit usersReceived(doc.array());
                 qDebug() << "Користувачів отримано:" << doc.array().count();
             } else if (doc.isObject()) {
-                // Отримання одного користувача
+                // Fetch single user
                 emit userReceived(doc.object());
                 qDebug() << "Користувач отримано";
             }
         } 
         else if (operation == QNetworkAccessManager::DeleteOperation) {
-            // Видалення користувача
+            // Delete user
             emit userDeleted();
             qDebug() << "Користувач видалений";
         }
     }
     else if (url.contains("/tasks")) {
         if (operation == QNetworkAccessManager::PostOperation) {
-            // Створення задачі - повертає ID
+            // Create task - returns ID
             bool ok = false;
             int taskId = 0;
             
@@ -693,7 +699,7 @@ void NetworkClient::onFinished(QNetworkReply *reply)
     }
     else if (url.contains("/feedbacks")) {
         if (operation == QNetworkAccessManager::PostOperation) {
-            // Створення відгуку - повертає ID
+            // Create feedback - returns ID
             bool ok = false;
             int feedbackId = 0;
             
@@ -738,11 +744,6 @@ void NetworkClient::uploadChanges()
     emit syncStarted();
     qDebug() << "Завантаження змін на сервер...";
     
-    // Цей метод загружає всі локальні задачи та відгуки на сервер
-    // В реальній реалізації слід отримувати поточного користувача
-    // і передавати його ID
-    
-    // Для простоти - загружаємо всі задачи та відгуки
     getTasks();
     
     emit syncCompleted("Upload completed successfully!");
@@ -754,8 +755,7 @@ void NetworkClient::uploadChangesForUser(int userId)
 {
     emit syncStarted();
     qDebug() << "Завантаження змін користувача" << userId << "на сервер...";
-    
-    // Отримати всі задачи та відгуки для цього користувача
+
     if (userId <= 0) {
         emit syncFailed("Invalid user ID");
         return;
@@ -882,8 +882,7 @@ void NetworkClient::downloadChanges()
 {
     emit syncStarted();
     qDebug() << "Завантаження змін з сервера...";
-    
-    // Завантажити всі задачи та відгуки з сервера
+
     getTasks();
     getFeedbacks();
     

@@ -1,7 +1,6 @@
 #include "dbprocessing.h"
 #include "dbmanipulator.h"
 #include <QDateTime>
-#include "argon2.h"
 
 DBProcessing::DBProcessing()
 {
@@ -36,64 +35,40 @@ static const std::map<DBTypes::DBTables, std::string> selectionMapper {
 void DBProcessing::insertTestData()
 {
     DBManipulator dbManager;
-
-    // Clear existing test data
-    dbManager.deleteAll("Tasks");
-    dbManager.deleteAll("Feedbacks");
-    dbManager.deleteAll("Users");
-
-    // Helper function to hash passwords
-    auto hashPassword = [](const QString& password) -> QString {
-        const char* salt = "TaskManagerSalt1";
-        char encoded[128];
-        
-        int result = argon2id_hash_encoded(
-            2,                          // t_cost (iterations)
-            65536,                      // m_cost (memory in KiB)
-            1,                          // parallelism
-            password.toUtf8().constData(),
-            password.toUtf8().length(),
-            salt,
-            strlen(salt),
-            32,                         // hash length
-            encoded,
-            sizeof(encoded)
-        );
-        
-        if (result != ARGON2_OK) {
-            qWarning() << "Argon2 hashing failed:" << argon2_error_message(result);
-            return QString();
-        }
-        
-        return QString::fromLatin1(encoded);
-    };
-
-    // Create users with hashed passwords
-    // Passwords: alice = "alice", bob = "bob", carol = "carol"
-    int aliceId = 0;
+    qDebug()<<"Begin insert test data";
+    // Use existing Bob user ID (Bob is registered separately)
     int bobId = 0;
-    int carolId = 0;
-
-    aliceId = dbManager.insertRow("Users", {QVariant(), {"alice"}, {hashPassword("alice")}}).second;
-    bobId = dbManager.insertRow("Users", {QVariant(), {"bob"}, {hashPassword("bob")}}).second;
-    carolId = dbManager.insertRow("Users", {QVariant(), {"carol"}, {hashPassword("carol")}}).second;
+    QVariantList args;
+    args << "Bob";
+    std::vector<QVariantList> bobRows;
+    DBTypes::DBResult bobResult = m_selector.selectWhere("Users", "Login = ?", args, bobRows);
+    if (bobResult == DBTypes::DBResult::OK && !bobRows.empty()) {
+        const auto &row = bobRows.front();
+        if (row.size() >= 2) {
+            bobId = row[1].toInt();
+        }
+    }
+    qDebug() << "bob id = "<< bobId;
+    if (bobId <= 0) {
+        qWarning() << "Test data skipped: Bob user not found";
+        return;
+    }
 
     // Create tasks for users
     auto insertTask = [&](int userId, const QString& title, const QString& desc, int state, const QDateTime& createdAt, const QDateTime& updatedAt) {
         return dbManager.insertRow("Tasks", {QVariant(), QVariant(userId), QVariant(title), QVariant(desc), QVariant(state), QVariant(createdAt.toString(Qt::ISODate)), QVariant(updatedAt.isValid() ? updatedAt.toString(Qt::ISODate) : QString()), QVariant()}).second;
     };
 
-    insertTask(aliceId, "Buy groceries", "Milk, Bread, Eggs", 0, QDateTime::currentDateTimeUtc(), QDateTime());
-    insertTask(bobId, "Finish report", "Monthly sales report", 0, QDateTime::currentDateTimeUtc().addDays(-2), QDateTime::currentDateTimeUtc());
-    insertTask(carolId, "Plan trip", "Book flights and hotels", 1, QDateTime::currentDateTimeUtc().addDays(-10), QDateTime::currentDateTimeUtc().addDays(-1));
+    const QDateTime nowUtc = QDateTime::currentDateTimeUtc();
+    insertTask(bobId, "Finish report", "Monthly sales report", 0, nowUtc.addDays(-2), nowUtc);
 
     // Add 200 tasks for bob
     for (int i = 1; i <= 200; ++i) {
         QString title = QString("Task %1 for Bob").arg(i);
         QString description = QString("Description for task %1. This is a sample task with some content.").arg(i);
         int state = i % 3;  // 0=Active, 1=Completed, 2=Archived
-        QDateTime created = QDateTime::currentDateTimeUtc().addDays(-(200 - i));
-        QDateTime updated = (state == 1) ? QDateTime::currentDateTimeUtc().addDays(-(200 - i) + 1) : QDateTime();
+        QDateTime created = nowUtc.addDays(-(200 - i));
+        QDateTime updated = (state == 1) ? nowUtc.addDays(-(200 - i) + 1) : QDateTime();
         insertTask(bobId, title, description, state, created, updated);
     }
 
@@ -102,9 +77,7 @@ void DBProcessing::insertTestData()
         return dbManager.insertRow("Feedbacks", {QVariant(userId), QVariant(rate), QVariant(desc), QVariant(createdAt.toString(Qt::ISODate))}).second;
     };
 
-    insertFeedback(aliceId, 5, "Great service", QDateTime::currentDateTimeUtc());
-    insertFeedback(bobId, 4, "Good support", QDateTime::currentDateTimeUtc().addDays(-3));
-    insertFeedback(carolId, 3, "Average experience", QDateTime::currentDateTimeUtc().addDays(-7));
+    insertFeedback(bobId, 4, "Good support", nowUtc.addDays(-3));
 
     qDebug() << "Test data inserted successfully";
 }
