@@ -19,8 +19,28 @@ AppButton {
         invertColors: false
     }
 
-    ToolTip.visible: hovered && tooltip !== ""
-    ToolTip.text: tooltip
-    ToolTip.delay: 500
+    ToolTip {
+        id: imageToolTip
+        parent: btn
+        visible: btn.hovered && tooltip !== ""
+        text: tooltip
+        delay: 500
+        timeout: 5000
+        padding: Style.tinyOffset
+        x: (btn.width - implicitWidth) / 2
+        y: -implicitHeight - Style.tinyOffset
 
+        background: Rectangle {
+            color: Style.tooltipBackground
+            radius: Style.smallRadius
+            border.color: Style.componentOutline
+            border.width: 1
+        }
+
+        contentItem: Text {
+            text: imageToolTip.text
+            color: Style.tooltipTextColor
+            font.pixelSize: Style.smallFont
+        }
+    }
 }

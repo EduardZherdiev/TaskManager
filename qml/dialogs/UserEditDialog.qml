@@ -306,7 +306,6 @@ Dialog {
                     var newPassword = passwordChangeVisible && newPasswordField.text !== "" ? newPasswordField.text : ""
                     var oldPassword = passwordChangeVisible ? currentPasswordField.text : ""
                     dialog.updateRequested(dialog.userId, loginField.text.trim(), oldPassword, newPassword)
-                    dialog.close()
                 }
             }
         }

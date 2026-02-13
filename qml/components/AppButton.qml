@@ -9,6 +9,7 @@ Button {
     implicitWidth: 140
 
     property int radius: Style.mediumRadius
+    property string tooltipText: ""
 
     // ===== ENUM =====
     readonly property int defaultButton: 0
@@ -29,6 +30,31 @@ Button {
         font.pixelSize: Style.smallFont
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
+    }
+
+    ToolTip {
+        id: controlToolTip
+        parent: control
+        visible: control.hovered && tooltipText !== ""
+        text: tooltipText
+        delay: 500
+        timeout: 5000
+        padding: Style.tinyOffset
+        x: (control.width - implicitWidth) / 2
+        y: -implicitHeight - Style.tinyOffset
+
+        background: Rectangle {
+            color: Style.tooltipBackground
+            radius: Style.smallRadius
+            border.color: Style.componentOutline
+            border.width: 1
+        }
+
+        contentItem: Text {
+            text: controlToolTip.text
+            color: Style.tooltipTextColor
+            font.pixelSize: Style.smallFont
+        }
     }
 
     function buttonColor() {

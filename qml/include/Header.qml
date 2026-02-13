@@ -7,6 +7,7 @@ import components
 import dialogs 1.0
 
 Rectangle {
+    id: root
     width: parent.width
     height: 86
     color: Style.surfaceColor
@@ -17,6 +18,115 @@ Rectangle {
     property bool serverHealthy: false
     property string serverHealthMessage: ""
     property string lastSyncAction: ""
+    property string pendingProfileLogin: ""
+    property string pendingProfilePassword: ""
+    property bool isLanguageChanging: false
+
+    function restoreComboBoxIndices() {
+        // After retranslate, QML engine may have reset ComboBox currentIndex
+        // Force restore them from AppSettings
+        
+        if (typeof monthFilter !== 'undefined' && monthFilter !== null) {
+            var newIndex = AppSettings.filterMonth >= 0 ? AppSettings.filterMonth + 1 : 0
+            monthFilter.currentIndex = newIndex
+        }
+        if (typeof sortBy !== 'undefined' && sortBy !== null) {
+            var maxIndex = sortBy.model.length - 1
+            var savedIndex = AppSettings.sortField
+            var newSortIndex = Math.min(savedIndex, maxIndex)
+            sortBy.currentIndex = newSortIndex
+        }
+        if (typeof sortRow !== 'undefined' && sortRow !== null) {
+            sortRow.sort = AppSettings.sortAscending
+        }
+    }
+
+    function applyFiltersAndSort() {
+        // Apply saved filters and sort settings
+        
+        if (AppSettings.filterMonth >= 0) {
+            var today = new Date()
+            var selectedMonth = AppSettings.filterMonth
+            var selectedYear = today.getFullYear()
+            
+            if (selectedMonth > today.getMonth()) {
+                selectedYear = today.getFullYear() - 1
+            }
+            
+            TaskModel.setFilterMonth(selectedMonth, selectedYear)
+        } else {
+            TaskModel.setFilterMonth(-1, -1)
+        }
+        
+        TaskModel.sortField = AppSettings.sortField
+        TaskModel.sortAscending = AppSettings.sortAscending
+    }
+
+    Component.onCompleted: {
+        // Apply saved filters and sort settings on Header initialization
+        applyFiltersAndSort()
+        
+        // Delay to ensure ComboBox'es are fully initialized
+        Qt.callLater(function() {
+            restoreComboBoxIndices()
+        })
+    }
+
+    Connections {
+        target: TaskModel
+        
+        function onShowDeletedChanged() {
+            // When showDeleted toggles, restore sort settings
+            applyFiltersAndSort()
+        }
+    }
+
+    Connections {
+        target: AppSettings
+        
+        function onFilterMonthChanged() {
+            if (AppSettings.filterMonth >= 0) {
+                var today = new Date()
+                var selectedMonth = AppSettings.filterMonth
+                var selectedYear = today.getFullYear()
+                
+                if (selectedMonth > today.getMonth()) {
+                    selectedYear = today.getFullYear() - 1
+                }
+                
+                TaskModel.setFilterMonth(selectedMonth, selectedYear)
+            } else {
+                TaskModel.setFilterMonth(-1, -1)
+            }
+        }
+        
+        function onSortFieldChanged() {
+            TaskModel.sortField = AppSettings.sortField
+        }
+        
+        function onSortAscendingChanged() {
+            TaskModel.sortAscending = AppSettings.sortAscending
+        }
+    }
+
+    Connections {
+        target: LanguageManager
+        
+        function onLanguageChanged() {
+            // Block all filter/sort updates during language change
+            root.isLanguageChanging = true
+            
+            // After language change and retranslate, we need to restore filter/sort values
+            // Use multiple Qt.callLater to ensure new elements are fully created and initialized
+            Qt.callLater(function() {
+                restoreComboBoxIndices()
+                
+                Qt.callLater(function() {
+                    root.isLanguageChanging = false
+                })
+            })
+        }
+    }
 
     Timer {
         interval: 30000
@@ -78,23 +188,44 @@ Rectangle {
                     qsTr("January"), qsTr("February"), qsTr("March"), qsTr("April"), qsTr("May"), qsTr("June"),
                     qsTr("July"), qsTr("August"), qsTr("September"), qsTr("October"), qsTr("November"), qsTr("December")
                 ]
-                currentIndex: new Date().getMonth() + 1
+                currentIndex: AppSettings.filterMonth >= 0 ? AppSettings.filterMonth + 1 : 0
+                
+                property bool isInitializing: true
+                
+                Component.onCompleted: {
+                    // Ensure currentIndex reflects AppSettings on startup
+                    var expectedIndex = AppSettings.filterMonth >= 0 ? AppSettings.filterMonth + 1 : 0
+                    if (currentIndex !== expectedIndex) {
+                        currentIndex = expectedIndex
+                    }
+                    isInitializing = false
+                }
+                
+                // Update when AppSettings changes externally
+                Connections {
+                    target: AppSettings
+                    function onFilterMonthChanged() {
+                        var newIndex = AppSettings.filterMonth >= 0 ? AppSettings.filterMonth + 1 : 0
+                        monthFilter.currentIndex = newIndex
+                    }
+                }
+                
                 onActivated: function(index) {
+                    // Skip update during initialization or language change
+                    if (isInitializing || root.isLanguageChanging) {
+                        return
+                    }
+
+                    // Only update AppSettings if the value would actually change
                     if (index === 0) {
-                        // "All" selected - show all months
-                        TaskModel.setFilterMonth(-1, -1)
-                    } else {
-                        // Month selected (1-12, so actual month is index-1)
-                        var today = new Date()
-                        var selectedMonth = index - 1
-                        var selectedYear = today.getFullYear()
-                        
-                        // If selected month is in the future, it's from previous year
-                        if (selectedMonth > today.getMonth()) {
-                            selectedYear = today.getFullYear() - 1
+                        if (AppSettings.filterMonth !== -1) {
+                            AppSettings.filterMonth = -1
                         }
-                        
-                        TaskModel.setFilterMonth(selectedMonth, selectedYear)
+                    } else if (index > 0) {
+                        var newMonth = index - 1
+                        if (AppSettings.filterMonth !== newMonth) {
+                            AppSettings.filterMonth = newMonth
+                        }
                     }
                 }
             }
@@ -108,8 +239,15 @@ Rectangle {
             Row {
                 id: sortRow
                 spacing: Style.smallSpacing
-                property bool sort: true // desk
+                property bool sort: AppSettings.sortAscending
                 property string sortImg: sort ? "arrow-down" : "arrow-up"
+                
+                // Watch AppSettings.sortAscending and update sort property
+                Binding {
+                    target: sortRow
+                    property: "sort"
+                    value: AppSettings.sortAscending
+                }
 
                 Column {
                     spacing: 2
@@ -124,20 +262,41 @@ Rectangle {
                         model: TaskModel.showDeleted 
                             ? [qsTr("Created at"), qsTr("Title"), qsTr("State"), qsTr("Updated at"), qsTr("Deleted at")]
                             : [qsTr("Created at"), qsTr("Title"), qsTr("State"), qsTr("Updated at")]
-                        currentIndex: TaskModel.sortField
+                        currentIndex: {
+                            // Ensure currentIndex doesn't exceed available items
+                            var savedIndex = AppSettings.sortField
+                            var maxIndex = model.length - 1
+                            return Math.min(savedIndex, maxIndex)
+                        }
+                        
+                        // Watch AppSettings.sortField and update currentIndex
+                        Binding {
+                            target: sortBy
+                            property: "currentIndex"
+                            value: {
+                                var savedIndex = AppSettings.sortField
+                                var maxIndex = sortBy.model.length - 1
+                                return Math.min(savedIndex, maxIndex)
+                            }
+                            when: !sortBy.activeFocus
+                        }
+                        
                         onActivated: function(index) {
+                            AppSettings.sortField = index
                             TaskModel.sortField = index
                         }
                     }
                 }
                 ImgButton {
+                    imgScale: 1.3
+                    source: ResourceManager.icon(sortRow.sortImg, "png")
+                    tooltip: sortRow.sort ? qsTr("Sort ascending") : qsTr("Sort descending")
                     width: sortBy.height
                     height: sortBy.height
-                    imgScale: 1.3
                     anchors.bottom: parent.bottom
-                    source: ResourceManager.icon(sortRow.sortImg, "png")
                     onClicked: {
                         sortRow.sort = !sortRow.sort
+                        AppSettings.sortAscending = sortRow.sort
                         TaskModel.sortAscending = sortRow.sort
                     }
                 }
@@ -154,6 +313,7 @@ Rectangle {
 
             ImgButton {
                 source: ResourceManager.icon("refresh", "png")
+                tooltip: qsTr("Reload local DB")
                 onClicked: {
                     TaskModel.reloadTasks()
                 }
@@ -174,7 +334,7 @@ Rectangle {
                 ImgButton {
                     imgScale: 1.0
                     source: ResourceManager.icon("download", "png")
-                    tooltip: qsTr("Download changes from server")
+                    tooltip: qsTr("Download from server")
                     enabled: !isSyncing
                     onClicked: {
                         if (UserModel.currentUserId > 0) {
@@ -189,7 +349,7 @@ Rectangle {
                 ImgButton {
                     imgScale: 1.0
                     source: ResourceManager.icon("upload", "png")
-                    tooltip: qsTr("Upload changes to server")
+                    tooltip: qsTr("Upload to server")
                     enabled: !isSyncing
                     onClicked: {
                         if (UserModel.currentUserId > 0) {
@@ -261,7 +421,11 @@ Rectangle {
                 anchors.horizontalCenter: parent.horizontalCenter
                 checked: TaskModel.showDeleted
                 onCheckedChanged: {
+                    console.log("showDeleted toggled to: " + checked)
                     TaskModel.showDeleted = checked
+                    // Restore filters and sort after toggling deleted items view
+                    console.log("Calling applyFiltersAndSort after showDeleted toggle")
+                    applyFiltersAndSort()
                 }
             }
         }
@@ -301,26 +465,10 @@ Rectangle {
             UserEditDialog {
                 id: userEditDialog
                 onUpdateRequested: function(userId, newLogin, oldPassword, newPassword) {
-                    if (!UserModel.updateUser(newLogin, oldPassword, newPassword)) {
-                        var errorMsg = UserModel.lastError
-                        // Show password error in the specific field
-                        if (errorMsg.indexOf("password") !== -1 && errorMsg.indexOf("incorrect") !== -1) {
-                            userEditDialog.showPasswordError(errorMsg)
-                        } else {
-                            userEditDialog.showError(errorMsg)
-                        }
-                        return
-                    }
-                    
-                    // Update saved credentials if remember is enabled
-                    if (AppSettings.rememberLogin) {
-                        AppSettings.savedLogin = newLogin
-                        if (newPassword !== "") {
-                            AppSettings.savedPasswordHash = UserModel.hashPassword(newPassword)
-                        }
-                    }
-                    
-                    userEditDialog.close()
+                    pendingProfileLogin = newLogin
+                    pendingProfilePassword = newPassword
+                    userEditDialog.showError("")
+                    UserModel.updateUserWithServer(newLogin, oldPassword, newPassword)
                 }
                 onSignOutRequested: {
                     // Call signOut on UserModel
@@ -335,6 +483,32 @@ Rectangle {
                     AppSettings.savedRefreshToken = ""
                     // After sign out, open sign-in dialog
                     signInDialog.open()
+                }
+            }
+
+            Connections {
+                target: UserModel
+
+                function onServerUserUpdateSucceeded(login) {
+                    if (AppSettings.rememberLogin) {
+                        AppSettings.savedLogin = login
+                        if (pendingProfilePassword !== "") {
+                            AppSettings.savedPasswordHash = UserModel.hashPassword(pendingProfilePassword)
+                        }
+                    }
+
+                    pendingProfileLogin = ""
+                    pendingProfilePassword = ""
+                    userEditDialog.close()
+                }
+
+                function onServerUserUpdateFailed(error) {
+                    pendingProfilePassword = ""
+                    if (error.indexOf("password") !== -1 && error.indexOf("incorrect") !== -1) {
+                        userEditDialog.showPasswordError(error)
+                    } else {
+                        userEditDialog.showError(error)
+                    }
                 }
             }
 
@@ -382,6 +556,7 @@ Rectangle {
             ImgButton {
                 imgScale: 1.2
                 source: ResourceManager.icon("settings")
+                tooltip: qsTr("Settings")
                 onClicked: settingsDialog.open()
             }
         }
@@ -404,6 +579,7 @@ Rectangle {
             ImgButton {
                 imgScale: 0.8
                 source: ResourceManager.icon("add", "png")
+                tooltip: qsTr("Add new task")
                 onClicked: addTaskDialog.openForTask(-1, "", "", 0, "", "", "")
             }
         }

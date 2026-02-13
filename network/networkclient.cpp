@@ -281,6 +281,25 @@ void NetworkClient::loginUser(const QString &login, const QString &password)
 }
 
 
+void NetworkClient::updateCurrentUser(const QString &login, const QString &oldPassword, const QString &newPassword)
+{
+    QJsonObject json;
+    if (!login.isEmpty()) {
+        json["login"] = login;
+    }
+    if (!oldPassword.isEmpty()) {
+        json["old_password"] = oldPassword;
+    }
+    if (!newPassword.isEmpty()) {
+        json["new_password"] = newPassword;
+    }
+
+    QJsonDocument doc(json);
+    sendRequest("/users/me", QNetworkAccessManager::PutOperation, doc.toJson());
+    qDebug() << "Запит на оновлення користувача";
+}
+
+
 void NetworkClient::getUsers()
 {
     sendRequest("/users", QNetworkAccessManager::GetOperation);
@@ -642,6 +661,12 @@ void NetworkClient::onFinished(QNetworkReply *reply)
                 qDebug() << "Реєстрація успішна. ID:" << userId;
             }
         } 
+        else if (operation == QNetworkAccessManager::PutOperation && url.contains("/users/me")) {
+            if (doc.isObject()) {
+                emit userUpdated(doc.object());
+                qDebug() << "Користувач оновлений";
+            }
+        }
         else if (operation == QNetworkAccessManager::GetOperation) {
             // GET request
             if (doc.isArray()) {

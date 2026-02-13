@@ -1,5 +1,6 @@
 #include "include/usermodel.h"
 #include "include/userregistrationhandler.h"
+#include "include/userupdatehandler.h"
 #include "network/networkclient.h"
 #include <QQmlEngine>
 #include <QDebug>
@@ -461,6 +462,35 @@ void UserModel::setRegistrationHandler(UserRegistrationHandler* handler)
     }
 }
 
+void UserModel::setUpdateHandler(UserUpdateHandler* handler)
+{
+    m_updateHandler = handler;
+    if (m_updateHandler) {
+        connect(m_updateHandler, &UserUpdateHandler::updateSucceeded,
+                this, [this](const QString& login) {
+            if (!applyLocalUserUpdate(m_pendingUpdateLogin, m_pendingUpdatePassword)) {
+                emit serverUserUpdateFailed(tr("Server updated, but failed to update local data"));
+                m_pendingUpdateLogin.clear();
+                m_pendingUpdatePassword.clear();
+                return;
+            }
+
+            m_currentUserLogin = login;
+            emit currentUserChanged();
+            emit serverUserUpdateSucceeded(login);
+            m_pendingUpdateLogin.clear();
+            m_pendingUpdatePassword.clear();
+        });
+        connect(m_updateHandler, &UserUpdateHandler::updateFailed,
+                this, [this](const QString& error) {
+            setError(error);
+            emit serverUserUpdateFailed(error);
+            m_pendingUpdateLogin.clear();
+            m_pendingUpdatePassword.clear();
+        });
+    }
+}
+
 void UserModel::registerUserWithServer(const QString& login, const QString& password)
 {
     if (!m_registrationHandler) {
@@ -470,5 +500,63 @@ void UserModel::registerUserWithServer(const QString& login, const QString& pass
     }
     
     m_registrationHandler->registerUser(login, password);
+}
+
+void UserModel::updateUserWithServer(const QString& newLogin, const QString& oldPassword, const QString& newPassword)
+{
+    if (!m_updateHandler) {
+        setError(tr("Update handler not initialized"));
+        emit serverUserUpdateFailed(tr("Update handler not initialized"));
+        return;
+    }
+
+    m_pendingUpdateLogin = newLogin.trimmed();
+    m_pendingUpdatePassword = newPassword;
+
+    m_updateHandler->updateUser(m_currentUserId, m_currentUserLogin, newLogin, oldPassword, newPassword);
+}
+
+bool UserModel::applyLocalUserUpdate(const QString& newLogin, const QString& newPassword)
+{
+    QVector<QString> columns;
+    QVariantList values;
+
+    columns << "Id";
+    values << m_currentUserId;
+
+    columns << "Login";
+    values << newLogin;
+
+    if (!newPassword.isEmpty()) {
+        QString newPasswordHash = hashPassword(newPassword);
+        columns << "PasswordHash";
+        values << newPasswordHash;
+    } else {
+        QVariantList getPasswordArgs;
+        getPasswordArgs << m_currentUserId;
+        auto passRes = DBProcessing::instance().requestTableDataWhere(DBTypes::DBTables::Users,
+                                                           "Id = ?",
+                                                           getPasswordArgs);
+        if (passRes.first != DBTypes::DBResult::OK || passRes.second.empty()) {
+            setError(tr("Failed to retrieve user data"));
+            return false;
+        }
+        const auto &row = passRes.second.front();
+        if (row.size() < 3) {
+            setError(tr("Invalid user record"));
+            return false;
+        }
+        QString currentPassword = row[2].toString();
+        columns << "PasswordHash";
+        values << currentPassword;
+    }
+
+    auto result = DBProcessing::instance().requestUpdate(DBTypes::DBTables::Users, columns, values);
+    if (result != DBTypes::DBResult::OK) {
+        setError(tr("Failed to update user"));
+        return false;
+    }
+
+    return true;
 }
 

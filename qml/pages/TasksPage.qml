@@ -201,6 +201,7 @@ Column {
                 Item { width: Style.smallSpacing; height: 1 }
                 ImgButton {
                     source: ResourceManager.icon("view","png")
+                    tooltip: qsTr("View/Edit")
                     height: parent.height
                     width: height
                     onClicked: {
@@ -212,6 +213,7 @@ Column {
 
                 ImgButton {
                     source: ResourceManager.icon("delete","png")
+                    tooltip: TaskModel.showDeleted ? qsTr("Permanently delete") : qsTr("Delete")
                     height: parent.height
                     width: height
                     type: 2
@@ -230,6 +232,7 @@ Column {
 
                 ImgButton {
                     source: ResourceManager.icon("restore","png")
+                    tooltip: qsTr("Restore")
                     height: parent.height
                     width: height
                     visible: TaskModel.showDeleted

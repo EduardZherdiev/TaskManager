@@ -19,6 +19,9 @@ ApplicationWindow {
     property var styleWindow: null
 
     Component.onCompleted: {
+        // Apply saved language - MUST be done first before theme to ensure proper translation reloading
+        LanguageManager.setLanguage(AppSettings.language)
+        
         // Apply saved theme on startup
         Style.isDarkTheme = AppSettings.isDarkTheme
         

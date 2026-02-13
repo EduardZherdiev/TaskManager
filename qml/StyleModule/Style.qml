@@ -36,6 +36,10 @@ QtObject {
     readonly property color componentOutline: isDarkTheme ? "#FFFFFF22" : "#00000022"
     readonly property color componentFocusRing: secondaryColor
 
+    /* ====== TOOLTIP ====== */
+    readonly property color tooltipBackground: isDarkTheme ? "#323232" : "#575757"
+    readonly property color tooltipTextColor: "#FFFFFF"
+
     /* ====== PRIMARY BUTTON ====== */
     readonly property color primaryHover: isDarkTheme ? "#7E3FF2" : "#C9A7FF"
     readonly property color primaryPressed: isDarkTheme ? "#4A00C2" : "#9A67EA"

@@ -68,5 +68,7 @@
         <file>qml/dialogs/SyncConflictDialog.qml</file>
         <file>qml/dialogs/NetworkErrorDialog.qml</file>
         <file>qml/dialogs/SyncSuccessDialog.qml</file>
+        <file>qml_ua.qm</file>
+        <file>qml_en.qm</file>
     </qresource>
 </RCC>

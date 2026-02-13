@@ -37,6 +37,7 @@ public:
     Q_INVOKABLE void checkUserExists(const QString &login);
     Q_INVOKABLE void registerUser(const QString &login, const QString &password);
     Q_INVOKABLE void loginUser(const QString &login, const QString &password);
+    Q_INVOKABLE void updateCurrentUser(const QString &login, const QString &oldPassword, const QString &newPassword);
     Q_INVOKABLE void getUsers();
     Q_INVOKABLE void getUser(int userId);
     Q_INVOKABLE void deleteUser(int userId);
@@ -71,6 +72,7 @@ signals:
     void userExistsCheckCompleted(bool exists, const QString &login);
     void userRegistered(int userId);
     void userLoggedIn(int userId, const QString &login);
+    void userUpdated(const QJsonObject &user);
     void usersReceived(const QJsonArray &users);
     void userReceived(const QJsonObject &user);
     void userDeleted();

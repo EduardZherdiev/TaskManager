@@ -52,11 +52,17 @@ Dialog {
             }
 
             ComboBox {
+                id: languageCombo
                 width: parent.width
-                model: [qsTr("English"), qsTr("Українська"), qsTr("Deutsch")]
+                model: [qsTr("English"), qsTr("Українська")]
                 currentIndex: AppSettings.language
                 onActivated: function (index) {
                     AppSettings.language = index
+                    LanguageManager.setLanguage(index)
+                    // Restore ComboBox indices in Header after retranslate
+                    if (root && root.restoreComboBoxIndices) {
+                        root.restoreComboBoxIndices()
+                    }
                 }
             }
         }

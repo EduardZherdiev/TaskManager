@@ -32,7 +32,8 @@ SOURCES += \
         argon2/src/blake2/blake2b.c \
         argon2/src/ref.c \
         network/networkclient.cpp \
-        src/userregistrationhandler.cpp
+        src/userregistrationhandler.cpp \
+        src/userupdatehandler.cpp
 
 RESOURCES += qml.qrc
 
@@ -56,7 +57,8 @@ HEADERS += \
     include/openglbarchart3d.h \
     include/keyboardhandler.h \
     network/networkclient.h \
-    include/userregistrationhandler.h
+    include/userregistrationhandler.h \
+    include/userupdatehandler.h
 
 # Argon2 include paths
 INCLUDEPATH += $$PWD/argon2/include \
@@ -88,3 +90,4 @@ QML_DESIGNER_IMPORT_PATH =
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
+

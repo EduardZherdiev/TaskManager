@@ -81,7 +81,7 @@ Rectangle {
                         }
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
-                            text: "Completed: " + TaskModel.completedCount
+                            text: qsTr("Completed: ") + TaskModel.completedCount
                             font.pixelSize: 11
                             color: Style.textColor
                         }
@@ -98,7 +98,7 @@ Rectangle {
                         }
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
-                            text: "In Progress: " + TaskModel.inProgressCount
+                            text: qsTr("In Progress: ") + TaskModel.inProgressCount
                             font.pixelSize: 11
                             color: Style.textColor
                         }
@@ -115,7 +115,7 @@ Rectangle {
                         }
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
-                            text: "Archived: " + TaskModel.archivedCount
+                            text: qsTr("Archived: ") + TaskModel.archivedCount
                             font.pixelSize: 11
                             color: Style.textColor
                         }

@@ -33,17 +33,14 @@ void TaskModel::setSortField(int field)
 {
     if (m_sortField == field)
         return;
-    
-    qDebug() << "Changing sort field from" << m_sortField << "to" << field;
+
     m_sortField = field;
     emit sortFieldChanged();
     
     // Trigger view update
-    qDebug() << "Triggering view update after sort field change";
     beginResetModel();
     sortTasks();
     endResetModel();
-    qDebug() << "View update completed";
 }
 
 bool TaskModel::sortAscending() const
@@ -55,17 +52,14 @@ void TaskModel::setSortAscending(bool ascending)
 {
     if (m_sortAscending == ascending)
         return;
-    
-    qDebug() << "Changing sort order to" << (ascending ? "ascending" : "descending");
+
     m_sortAscending = ascending;
     emit sortAscendingChanged();
     
     // Trigger view update
-    qDebug() << "Triggering view update after sort order change";
     beginResetModel();
     sortTasks();
     endResetModel();
-    qDebug() << "View update completed";
 }
 
 QString TaskModel::lastError() const
