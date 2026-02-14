@@ -1226,7 +1226,7 @@
     <message>
         <location filename="../qml/dialogs/UserRegistrationDialog.qml" line="36"/>
         <source>User Registration</source>
-        <translation>Реєстрація користувача</translation>
+        <translation>Реєстрація</translation>
     </message>
     <message>
         <location filename="../qml/dialogs/UserRegistrationDialog.qml" line="55"/>
